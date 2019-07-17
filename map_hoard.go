@@ -7,7 +7,7 @@ import (
 )
 
 type valExpire struct {
-	value      interface{}
+	value      *HoardCache
 	expiration time.Time
 }
 
@@ -15,11 +15,13 @@ func (ve valExpire) Expired() bool {
 	return ve.expiration.Before(time.Now())
 }
 
+// MapHoard implements a Hoard that is backed by an in-memory map
 type MapHoard struct {
 	cache map[Nut]*valExpire
 	mutex *sync.Mutex
 }
 
+// NewMapHoard creates a new MapHoard
 func NewMapHoard() *MapHoard {
 	mh := &MapHoard{
 		cache: make(map[Nut]*valExpire),
@@ -50,20 +52,21 @@ func (mh *MapHoard) cleaner() {
 	}
 }
 
-func (mh *MapHoard) Get(nut Nut) (interface{}, error) {
+// Get implements Hoard
+func (mh *MapHoard) Get(nut Nut) (*HoardCache, error) {
 	mh.mutex.Lock()
 	defer mh.mutex.Unlock()
 	if value, ok := mh.cache[nut]; ok {
 		if !value.Expired() {
 			return value.value, nil
-		} else {
-			delete(mh.cache, nut)
 		}
+		delete(mh.cache, nut)
 	}
-	return nil, NotFoundError
+	return nil, ErrNotFound
 }
 
-func (mh *MapHoard) GetAndDelete(nut Nut) (interface{}, error) {
+// GetAndDelete implements Hoard
+func (mh *MapHoard) GetAndDelete(nut Nut) (*HoardCache, error) {
 	mh.mutex.Lock()
 	defer mh.mutex.Unlock()
 	if value, ok := mh.cache[nut]; ok {
@@ -72,10 +75,11 @@ func (mh *MapHoard) GetAndDelete(nut Nut) (interface{}, error) {
 			return value.value, nil
 		}
 	}
-	return nil, NotFoundError
+	return nil, ErrNotFound
 }
 
-func (mh *MapHoard) Save(nut Nut, value interface{}, expiration time.Duration) error {
+// Save implements Hoard
+func (mh *MapHoard) Save(nut Nut, value *HoardCache, expiration time.Duration) error {
 	if nut == "" {
 		return fmt.Errorf("empty nuts are not allowed")
 	}

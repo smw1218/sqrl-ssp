@@ -33,20 +33,19 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	// TODO remove me
 	spew.Dump(req)
 
-	hoardCache, err := api.GetAndDelete(Nut(nut))
+	hoardCache, err := api.getAndDelete(Nut(nut))
 	if err != nil {
-		if err == NotFoundError {
+		if err == ErrNotFound {
 			log.Printf("Nut %v not found", nut)
 			w.Write(response.WithClientFailure().WithCommandFailed().Encode())
 			return
-		} else {
-			log.Printf("Failed nut lookup: %v", err)
-			w.Write(response.WithTransientError().WithCommandFailed().Encode())
-			return
 		}
+		log.Printf("Failed nut lookup: %v", err)
+		w.Write(response.WithTransientError().WithCommandFailed().Encode())
+		return
 	}
 
-	// validate last response agains this request
+	// validate last response against this request
 	if hoardCache.LastResponse != nil && !req.ValidateLastResponse(hoardCache.LastResponse) {
 		w.Write(response.WithCommandFailed().Encode())
 		// this is intentionally after so nothing about last response leaks
@@ -82,12 +81,12 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Nut = nut
-	response.Qry = api.Qry(nut)
+	response.Qry = api.qry(nut)
 
 	// check if the same user has already been authenticated previously
 	accountDisabled := false
-	identity, err := api.FindIdentity(req.Client.Idk)
-	if err != nil && err != NotFoundError {
+	identity, err := api.findIdentity(req.Client.Idk)
+	if err != nil && err != ErrNotFound {
 		log.Printf("Error looking up identity: %v", err)
 		w.Write(response.WithTransientError().Encode())
 		return
@@ -95,8 +94,8 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 
 	var previousIdentity *SqrlIdentity
 	if req.Client.Pidk != "" {
-		previousIdentity, err = api.FindIdentity(req.Client.Pidk)
-		if err != nil && err != NotFoundError {
+		previousIdentity, err = api.findIdentity(req.Client.Pidk)
+		if err != nil && err != ErrNotFound {
 			log.Printf("Error looking up previous identity: %v", err)
 			w.Write(response.WithTransientError().Encode())
 			return
@@ -143,7 +142,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 
 		// handle previous identity swap
 		if previousIdentity != nil {
-			err := api.SwapIdentities(previousIdentity, saveIdentity)
+			err := api.swapIdentities(previousIdentity, saveIdentity)
 			if err != nil {
 				log.Printf("Failed swapping identities: %v", err)
 				w.Write(response.WithTransientError().WithCommandFailed().Encode())

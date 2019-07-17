@@ -14,12 +14,8 @@ import (
 	"golang.org/x/crypto/ed25519"
 )
 
-type QueryTuple struct {
-	Key   string
-	Value string
-}
-
-// ParseSqrlQuery copied from go's url.ParseQuery with some modifications
+// ParseSqrlQuery copied from go's url.ParseQuery with some modifications.
+// The format is CRLF separated "key=value" pairs
 func ParseSqrlQuery(query string) (params map[string]string, err error) {
 	params = make(map[string]string, 0)
 	for query != "" {
@@ -56,6 +52,9 @@ func ParseSqrlQuery(query string) (params map[string]string, err error) {
 	return params, err
 }
 
+// ClientBody holds the internal structure of the request "client" parameter;
+// see https://www.grc.com/sqrl/protocol.htm in the section "The content of the “client” parameter."
+// This is owned by a ClientRequest and probably shouldn't be used on it's own.
 type ClientBody struct {
 	Version []int
 	Cmd     string
@@ -66,6 +65,7 @@ type ClientBody struct {
 	Idk     string // Sqrl64.Encoded
 }
 
+// PublicKey decodes and validates the Idk as a ed25519.PublicKey
 func (cb *ClientBody) PublicKey() (ed25519.PublicKey, error) {
 	pubKey, err := Sqrl64.DecodeString(cb.Idk)
 	if err != nil {
@@ -77,6 +77,7 @@ func (cb *ClientBody) PublicKey() (ed25519.PublicKey, error) {
 	return pubKey, nil
 }
 
+// PidkPublicKey decodes and validates the Pidk as a ed25519.PublicKey
 func (cb *ClientBody) PidkPublicKey() (ed25519.PublicKey, error) {
 	pubKey, err := Sqrl64.DecodeString(cb.Pidk)
 	if err != nil {
@@ -88,6 +89,7 @@ func (cb *ClientBody) PidkPublicKey() (ed25519.PublicKey, error) {
 	return pubKey, nil
 }
 
+// ClientBodyFromParams creates ClientBody from the output of ParseSqrlQuery
 func ClientBodyFromParams(params map[string]string) (*ClientBody, error) {
 	cb := &ClientBody{}
 	// TODO handle multiple versions and ranges
@@ -113,6 +115,7 @@ func ClientBodyFromParams(params map[string]string) (*ClientBody, error) {
 	return cb, nil
 }
 
+// SqrlIdentity holds all the info about a valid SQRL identity
 type SqrlIdentity struct {
 	Disabled bool
 	Idk      string
@@ -121,6 +124,7 @@ type SqrlIdentity struct {
 	Pidk     string // TODO do we need to keep track of Pidk?
 }
 
+// CliRequest holds the data sent from the SQRL client to the /cli.sqrl endpoint
 type CliRequest struct {
 	Client           *ClientBody
 	Server           []byte
@@ -130,6 +134,7 @@ type CliRequest struct {
 	Urs              []byte
 }
 
+// Identity creates an identity from a request
 func (cr *CliRequest) Identity() *SqrlIdentity {
 	return &SqrlIdentity{
 		Idk:  cr.Client.Idk,
@@ -139,6 +144,9 @@ func (cr *CliRequest) Identity() *SqrlIdentity {
 	}
 }
 
+// VerifySignature verifies the ids signature against
+// the idk in the ClientBody. It also calls
+// VerifyPidsSignature if necessary.
 func (cr *CliRequest) VerifySignature() error {
 	pubKey, err := cr.Client.PublicKey()
 	if err != nil {
@@ -154,6 +162,8 @@ func (cr *CliRequest) VerifySignature() error {
 	return nil
 }
 
+// VerifyPidsSignature verifies the pids signature against
+// the pidk in the ClientBody
 func (cr *CliRequest) VerifyPidsSignature() error {
 	pubKey, err := cr.Client.PidkPublicKey()
 	if err != nil {
@@ -165,6 +175,9 @@ func (cr *CliRequest) VerifyPidsSignature() error {
 	return nil
 }
 
+// VerifyUrs validates a urs signature against a passed in vuk.
+// This call will fail if the urs doesn't exist because it is required
+// for several operations. Don't call this if you don't need it.
 func (cr *CliRequest) VerifyUrs(vuk string) error {
 	if vuk == "" || cr.Urs == nil {
 		return fmt.Errorf("vuk or urs not valid")
@@ -183,11 +196,16 @@ func (cr *CliRequest) VerifyUrs(vuk string) error {
 	return nil
 }
 
+// ValidateLastResponse checks to make sure the response on this request
+// matches a stored on that's passed in.
 func (cr *CliRequest) ValidateLastResponse(lastRepsonse []byte) bool {
 	equal := subtle.ConstantTimeCompare(cr.Server, lastRepsonse)
 	return equal == 1
 }
 
+// ParseCliRequest parses and validates the request. The CliRequest
+// can be trusted if no error is returned as the signatures have been
+// checked.
 func ParseCliRequest(r *http.Request) (*CliRequest, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

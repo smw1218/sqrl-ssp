@@ -13,8 +13,11 @@ import (
 // Nut is a cryptographic nonce used by SQRL
 type Nut string
 
+// Sqrl64 is a shortcut base64.RawURLEncoding encoding which is used
+// pervasively throughout the SQRL protocol
 var Sqrl64 = base64.RawURLEncoding
 
+// SqrlScheme is sqrl
 const SqrlScheme = "sqrl"
 
 // A Tree produces Nuts :)
@@ -22,15 +25,19 @@ type Tree interface {
 	Nut(payload interface{}) (Nut, error)
 }
 
-var NotFoundError = fmt.Errorf("Not Found")
+// ErrNotFound specific error returned if a Hoard
+// or identity isn't found. This is to differentiate
+// from more serious errors at the storage level
+var ErrNotFound = fmt.Errorf("Not Found")
 
 // Hoard stores Nuts for later use
 type Hoard interface {
-	Get(nut Nut) (interface{}, error)
-	GetAndDelete(nut Nut) (interface{}, error)
-	Save(nut Nut, value interface{}, expiration time.Duration) error
+	Get(nut Nut) (*HoardCache, error)
+	GetAndDelete(nut Nut) (*HoardCache, error)
+	Save(nut Nut, value *HoardCache, expiration time.Duration) error
 }
 
+// HoardCache is the state associated with a Nut
 type HoardCache struct {
 	State        string
 	RemoteIP     string
@@ -83,25 +90,25 @@ func (api *SqrlSspAPI) Host(r *http.Request) string {
 	return host
 }
 
-func (api *SqrlSspAPI) FindIdentity(idk string) (*SqrlIdentity, error) {
+func (api *SqrlSspAPI) findIdentity(idk string) (*SqrlIdentity, error) {
 	if knownUser, ok := api.Authenticated.Load(idk); ok {
 		log.Printf("Found existing identity: %#v", knownUser)
 		if identity, ok := knownUser.(*SqrlIdentity); ok {
 			return identity, nil
-		} else {
-			return nil, fmt.Errorf("Wrong type for identity %t", knownUser)
 		}
+		return nil, fmt.Errorf("Wrong type for identity %t", knownUser)
 	}
-	return nil, NotFoundError
+	return nil, ErrNotFound
 }
 
-func (api *SqrlSspAPI) SwapIdentities(previousIdentity, newIdentity *SqrlIdentity) error {
+func (api *SqrlSspAPI) swapIdentities(previousIdentity, newIdentity *SqrlIdentity) error {
 	api.Authenticated.Delete(previousIdentity.Idk)
 	// TODO some callback to broadcast that this happened
 	return nil
 }
 
-func (api *SqrlSspAPI) HttpsRoot(r *http.Request) *url.URL {
+// HTTPSRoot returns the best guess at the https root URL for this server
+func (api *SqrlSspAPI) HTTPSRoot(r *http.Request) *url.URL {
 	return &url.URL{
 		Scheme: "https",
 		Host:   api.Host(r),
@@ -109,6 +116,9 @@ func (api *SqrlSspAPI) HttpsRoot(r *http.Request) *url.URL {
 	}
 }
 
+// RemoteIP gets the remote IP as a string from a request
+// It prefers the X-Forwarded-For header since it's likely
+// this server will be behind a load balancer
 func (api *SqrlSspAPI) RemoteIP(r *http.Request) string {
 	ipAddress := r.Header.Get("X-Forwarded-For")
 	if ipAddress == "" {
@@ -117,6 +127,6 @@ func (api *SqrlSspAPI) RemoteIP(r *http.Request) string {
 	return ipAddress
 }
 
-func (api *SqrlSspAPI) Qry(nut Nut) string {
+func (api *SqrlSspAPI) qry(nut Nut) string {
 	return fmt.Sprintf("%v/cli.sqrl?nut=%v", api.RootPath, nut)
 }

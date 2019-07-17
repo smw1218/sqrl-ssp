@@ -55,16 +55,10 @@ func (api *SqrlSspAPI) Nut(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (api *SqrlSspAPI) GetAndDelete(nut Nut) (*HoardCache, error) {
-	genCache, err := api.hoard.GetAndDelete(Nut(nut))
+func (api *SqrlSspAPI) getAndDelete(nut Nut) (*HoardCache, error) {
+	hoardCache, err := api.hoard.GetAndDelete(Nut(nut))
 	if err != nil {
 		return nil, err
-	}
-	// TODO this only works for map_hoard
-	hoardCache, ok := genCache.(*HoardCache)
-	if !ok {
-		log.Printf("Type assert failed want *HoardCache got %t", genCache)
-		return nil, fmt.Errorf("Failed to get cached value")
 	}
 	return hoardCache, nil
 }
@@ -115,17 +109,16 @@ func (api *SqrlSspAPI) Pag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hoardCache, err := api.GetAndDelete(Nut(pagnut))
+	hoardCache, err := api.getAndDelete(Nut(pagnut))
 	if err != nil {
-		if err == NotFoundError {
+		if err == ErrNotFound {
 			w.WriteHeader(http.StatusNotFound)
 			return
-		} else {
-			log.Printf("Failed nut lookup: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Failed nut lookup"))
-			return
 		}
+		log.Printf("Failed nut lookup: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed nut lookup"))
+		return
 	}
 
 	if hoardCache.OriginalNut != Nut(nut) {

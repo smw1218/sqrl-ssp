@@ -7,22 +7,32 @@ import (
 	"strconv"
 )
 
-// As specified https://www.grc.com/sqrl/semantics.htm
+//
 
 // TIF bitflags
 const (
-	TIFIDMatch              = 0x1
-	TIFPreviousIDMatch      = 0x2
-	TIFIPMatched            = 0x4
-	TIFSQRLDisabled         = 0x8
+	// the identity has been seen before
+	TIFIDMatch = 0x1
+	// the previous identity is a known identity
+	TIFPreviousIDMatch = 0x2
+	// the IP address of the current request and the original Nut request match
+	TIFIPMatched = 0x4
+	// the SQRL account is disabled
+	TIFSQRLDisabled = 0x8
+	// the ClientBody.Cmd is not recognized
 	TIFFunctionNotSupported = 0x10
-	TIFTransientError       = 0x20
-	TIFCommandFailed        = 0x40
-	TIFClientFailure        = 0x80
-	TIFBadIDAssociation     = 0x100
+	// used for all the random server errors like failures to connect to datastores
+	TIFTransientError = 0x20
+	// the specific ClientBody.Cmd could not be completed for any reason
+	TIFCommandFailed = 0x40
+	// the client sent bad or unrecognized data or signature validation failed
+	TIFClientFailure = 0x80
+	// The owner of the Nut doesn't match this request
+	TIFBadIDAssociation = 0x100
 )
 
 // CliResponse encodes a response to the SQRL client
+// As specified https://www.grc.com/sqrl/semantics.htm
 type CliResponse struct {
 	Version []int
 	Nut     Nut
@@ -35,6 +45,7 @@ type CliResponse struct {
 	Can     string
 }
 
+// NewCliResponse creates a minimal valid CliResponse object
 func NewCliResponse(nut Nut, qry string) *CliResponse {
 	return &CliResponse{
 		Version: []int{1},
@@ -43,51 +54,78 @@ func NewCliResponse(nut Nut, qry string) *CliResponse {
 	}
 }
 
+// WithClientFailure set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithClientFailure() *CliResponse {
 	cr.TIF |= TIFClientFailure
 	return cr
 }
 
+// WithCommandFailed set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithCommandFailed() *CliResponse {
 	cr.TIF |= TIFCommandFailed
 	return cr
 }
 
+// WithSQRLDisabled set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithSQRLDisabled() *CliResponse {
 	cr.TIF |= TIFSQRLDisabled
 	return cr
 }
 
+// WithTransientError set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithTransientError() *CliResponse {
 	cr.TIF |= TIFTransientError
 	return cr
 }
 
+// WithIDMatch set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithIDMatch() *CliResponse {
 	cr.TIF |= TIFIDMatch
 	return cr
 }
 
+// WithPreviousIDMatch set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithPreviousIDMatch() *CliResponse {
 	cr.TIF |= TIFPreviousIDMatch
 	return cr
 }
 
+// ClearPreviousIDMatch clears the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) ClearPreviousIDMatch() *CliResponse {
 	cr.TIF = cr.TIF &^ TIFPreviousIDMatch
 	return cr
 }
 
+// WithIPMatch set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithIPMatch() *CliResponse {
 	cr.TIF |= TIFIPMatched
 	return cr
 }
 
+// WithBadIDAssociation set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithBadIDAssociation() *CliResponse {
 	cr.TIF |= TIFBadIDAssociation
 	return cr
 }
 
+// WithFunctionNotSupported set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) WithFunctionNotSupported() *CliResponse {
+	cr.TIF |= TIFFunctionNotSupported
+	return cr
+}
+
+// Encode writes the response as the CRNL format and
+// encodes it using Sqrl64 encoding.
 func (cr *CliResponse) Encode() []byte {
 	var b bytes.Buffer
 

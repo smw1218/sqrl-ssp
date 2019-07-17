@@ -8,7 +8,8 @@ import (
 func TestMapHoard(t *testing.T) {
 	h := NewMapHoard()
 
-	err := h.Save(Nut("nut"), "val", time.Second)
+	hoardCache := &HoardCache{}
+	err := h.Save(Nut("nut"), hoardCache, time.Second)
 	if err != nil {
 		t.Fatalf("Failed save: %v", err)
 	}
@@ -18,7 +19,7 @@ func TestMapHoard(t *testing.T) {
 		t.Fatalf("Failed get: %v", err)
 	}
 
-	if val.(string) != "val" {
+	if val != hoardCache {
 		t.Fatalf("Wrong value get: %v", val)
 	}
 
@@ -28,7 +29,7 @@ func TestMapHoard(t *testing.T) {
 		t.Fatalf("Failed get: %v", err)
 	}
 
-	if val.(string) != "val" {
+	if val != hoardCache {
 		t.Fatalf("Wrong value get: %v", val)
 	}
 }
@@ -36,7 +37,8 @@ func TestMapHoard(t *testing.T) {
 func TestMapHoardGetAndDelete(t *testing.T) {
 	h := NewMapHoard()
 
-	err := h.Save(Nut("nut"), "val", time.Second)
+	hoardCache := &HoardCache{}
+	err := h.Save(Nut("nut"), hoardCache, time.Second)
 	if err != nil {
 		t.Fatalf("Failed save: %v", err)
 	}
@@ -46,7 +48,7 @@ func TestMapHoardGetAndDelete(t *testing.T) {
 		t.Fatalf("Failed get: %v", err)
 	}
 
-	if val.(string) != "val" {
+	if val != hoardCache {
 		t.Fatalf("Wrong value get: %v", val)
 	}
 
@@ -56,7 +58,7 @@ func TestMapHoardGetAndDelete(t *testing.T) {
 		t.Fatalf("Succeeded when should have failed due to expiration")
 	}
 
-	if err != NotFoundError {
+	if err != ErrNotFound {
 		t.Fatalf("Wrong error: %v", err)
 	}
 
@@ -68,7 +70,8 @@ func TestMapHoardGetAndDelete(t *testing.T) {
 func TestMapHoardExpired(t *testing.T) {
 	h := NewMapHoard()
 
-	err := h.Save(Nut("nut"), "val", 0)
+	hoardCache := &HoardCache{}
+	err := h.Save(Nut("nut"), hoardCache, 0)
 	if err != nil {
 		t.Fatalf("Failed save: %v", err)
 	}
@@ -79,7 +82,7 @@ func TestMapHoardExpired(t *testing.T) {
 		t.Fatalf("Succeeded when should have failed due to expiration")
 	}
 
-	if err != NotFoundError {
+	if err != ErrNotFound {
 		t.Fatalf("Wrong error: %v", err)
 	}
 
