@@ -1,3 +1,14 @@
+// Implements the SQRL server-side protocol (SSP). The SqrlSspApi
+// is a stateful server object that manages SQRL identities. The /cli.sqrl
+// exposed at Cli is the only endpoint that is required to operate in
+// conjunction with the SQRL client. This endpoint is required to be served
+// over https.
+//
+// While it's possible that this code can be run within a web server that
+// terminates TLS itself, the expectation is that it is served from behind
+// a load balancer or reverse proxy. While I attempt to reconstruct the
+// host and paths from the request and standard forwarding headers, this
+// can be unreliable and it's best to confgure the HostOverride and RootPath
 package ssp
 
 import (
@@ -22,7 +33,7 @@ const SqrlScheme = "sqrl"
 
 // A Tree produces Nuts :)
 type Tree interface {
-	Nut(payload interface{}) (Nut, error)
+	Nut() (Nut, error)
 }
 
 // ErrNotFound specific error returned if a Hoard
@@ -51,6 +62,21 @@ type HoardCache struct {
 // once auth has succeeded
 type PagHandler func(identity string) string
 
+// Authenticator interface to allow user management triggered by
+// SQRL authentication events.
+type Authenticator interface {
+	// Called when a SQRL identity has been successfully authenticated. It
+	// should return a URL that will finish authentication to create a
+	// logged in session. This is also called for a new user.
+	// If an error occurs this should return an error
+	// page redirection
+	AuthenticateIdentity(identity string) string
+	// When an identity is rekeyed, it's necessary to swap the identity
+	// associated with a given user. This callback happens when a user
+	// wishes to swap their previous identity for a new one.
+	SwapIdentities(previousIdentity, newIdentity string) error
+}
+
 // SqrlSspAPI implements the endpoitns outlined here
 // https://www.grc.com/sqrl/sspapi.htm
 type SqrlSspAPI struct {
@@ -58,9 +84,11 @@ type SqrlSspAPI struct {
 	hoard         Hoard
 	NutExpiration time.Duration
 	Authenticated *sync.Map
-	HostOverride  string
+	// set to the hostname for serving SQRL urls; this can include a port if necessary
+	HostOverride string
+	// if the SQRL endpoints are not at the root of the host, then this overrides the path where they are hosted
 	RootPath      string
-	PagHandler    PagHandler
+	Authenticator Authenticator
 }
 
 // NewSqrlSspAPI needs a Tree implementation that produces Nuts
@@ -102,8 +130,11 @@ func (api *SqrlSspAPI) findIdentity(idk string) (*SqrlIdentity, error) {
 }
 
 func (api *SqrlSspAPI) swapIdentities(previousIdentity, newIdentity *SqrlIdentity) error {
+	err := api.Authenticator.SwapIdentities(previousIdentity.Idk, newIdentity.Idk)
+	if err != nil {
+		return err
+	}
 	api.Authenticated.Delete(previousIdentity.Idk)
-	// TODO some callback to broadcast that this happened
 	return nil
 }
 

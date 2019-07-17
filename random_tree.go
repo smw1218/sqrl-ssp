@@ -42,8 +42,7 @@ func (rt *RandomTree) valueReader() {
 }
 
 // Nut Create a pure random nut
-// payload is ignored
-func (rt *RandomTree) Nut(payload interface{}) (Nut, error) {
+func (rt *RandomTree) Nut() (Nut, error) {
 	select {
 	case val := <-rt.valueChan:
 		return val, nil

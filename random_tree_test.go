@@ -9,7 +9,7 @@ func TestRandomGenerate(t *testing.T) {
 		t.Fatalf("Error creating tree: %v", err)
 	}
 
-	nut, err := tree.Nut(nil)
+	nut, err := tree.Nut()
 	if err != nil {
 		t.Fatalf("Error creating nut: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestRandomUniqueGenerate(t *testing.T) {
 	values := make(map[Nut]struct{}, 10)
 
 	for i := 0; i < 10; i++ {
-		nut, err := tree.Nut(nil)
+		nut, err := tree.Nut()
 		if err != nil {
 			t.Fatalf("Error creating nut: %v", err)
 		}

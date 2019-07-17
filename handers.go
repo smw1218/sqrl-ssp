@@ -12,13 +12,13 @@ import (
 // Nut implements the /nut.sqrl endpoint
 // TODO sin, ask and 1-9 params
 func (api *SqrlSspAPI) Nut(w http.ResponseWriter, r *http.Request) {
-	nut, err := api.tree.Nut(nil)
+	nut, err := api.tree.Nut()
 	if err != nil {
 		log.Printf("Failed generating nut: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	pagnut, err := api.tree.Nut(nil)
+	pagnut, err := api.tree.Nut()
 	if err != nil {
 		log.Printf("Failed generating nut: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -127,5 +127,5 @@ func (api *SqrlSspAPI) Pag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(api.PagHandler(hoardCache.LastRequest.Client.Idk)))
+	w.Write([]byte(api.Authenticator.AuthenticateIdentity(hoardCache.LastRequest.Client.Idk)))
 }

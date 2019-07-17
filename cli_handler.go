@@ -73,7 +73,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// generate new nut
-	nut, err = api.tree.Nut(nil)
+	nut, err = api.tree.Nut()
 	if err != nil {
 		log.Printf("Error generating nut: %v", err)
 		w.Write(response.WithTransientError().Encode())
@@ -163,7 +163,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (req.Client.Cmd == "ident" || req.Client.Cmd == "enable") && req.Client.Opt["cps"] && !accountDisabled {
-		authURL := api.PagHandler(req.Client.Idk)
+		authURL := api.Authenticator.AuthenticateIdentity(req.Client.Idk)
 		log.Printf("Setting CPS Auth: %v", authURL)
 		response.URL = authURL
 	}

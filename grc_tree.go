@@ -32,8 +32,7 @@ func NewGrcTree(counterInit uint64, blowfishKey []byte) (*GrcTree, error) {
 }
 
 // Nut Create a nut based on the GRC spec.
-// payload is ignored as the counter is managed internally
-func (gt *GrcTree) Nut(payload interface{}) (Nut, error) {
+func (gt *GrcTree) Nut() (Nut, error) {
 	nextValue := atomic.AddUint64(&gt.monotonicCounter, 1)
 	nextValueBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(nextValueBytes, nextValue)
