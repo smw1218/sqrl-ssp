@@ -85,7 +85,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 
 	// check if the same user has already been authenticated previously
 	accountDisabled := false
-	identity, err := api.findIdentity(req.Client.Idk)
+	identity, err := api.authStore.FindIdentity(req.Client.Idk)
 	if err != nil && err != ErrNotFound {
 		log.Printf("Error looking up identity: %v", err)
 		w.Write(response.WithTransientError().Encode())
@@ -94,7 +94,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 
 	var previousIdentity *SqrlIdentity
 	if req.Client.Pidk != "" {
-		previousIdentity, err = api.findIdentity(req.Client.Pidk)
+		previousIdentity, err = api.authStore.FindIdentity(req.Client.Pidk)
 		if err != nil && err != ErrNotFound {
 			log.Printf("Error looking up previous identity: %v", err)
 			w.Write(response.WithTransientError().Encode())
@@ -106,6 +106,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if identity != nil {
+		accountDisabled = identity.Disabled
 		response.WithIDMatch()
 		if req.Client.Opt["suk"] {
 			response.Suk = identity.Suk
@@ -122,27 +123,43 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 			}
 			if req.Client.Cmd == "enable" {
 				log.Printf("Reenabled account: %v", identity.Idk)
-				// TODO save back to store
 				identity.Disabled = false
+				err := api.authStore.SaveIdentity(identity)
+				if err != nil {
+					log.Printf("Failed saving identity %v: %v", identity.Idk, err)
+					w.Write(response.WithClientFailure().WithCommandFailed().Encode())
+					return
+				}
 			} else if req.Client.Cmd == "remove" {
+				err := api.removeIdentity(identity)
+				if err != nil {
+					log.Printf("Failed removing identity %v: %v", identity.Idk, err)
+					w.Write(response.WithClientFailure().WithCommandFailed().Encode())
+					return
+				}
 				log.Printf("removed identity %v", identity.Idk)
-				api.Authenticated.Delete(identity.Idk)
 			}
 		}
 		if req.Client.Cmd == "disable" {
-			// TODO save back to store
 			identity.Disabled = true
+			err := api.authStore.SaveIdentity(identity)
+			if err != nil {
+				log.Printf("Failed saving identity %v: %v", identity.Idk, err)
+				w.Write(response.WithClientFailure().WithCommandFailed().Encode())
+				return
+			}
 		}
 
 		if identity.Disabled {
 			response.WithSQRLDisabled()
 		}
 	} else if req.Client.Cmd == "ident" {
-		saveIdentity := req.Identity()
-
-		// handle previous identity swap
+		// create new identity from the request
+		identity = req.Identity()
+		// handle previous identity swap if the current identity is new
 		if previousIdentity != nil {
-			err := api.swapIdentities(previousIdentity, saveIdentity)
+			log.Printf("Swapped identity %v for %v", previousIdentity, identity)
+			err := api.swapIdentities(previousIdentity, identity)
 			if err != nil {
 				log.Printf("Failed swapping identities: %v", err)
 				w.Write(response.WithTransientError().WithCommandFailed().Encode())
@@ -152,8 +169,6 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 			response.ClearPreviousIDMatch()
 		}
 
-		log.Printf("Authenticated Idk: %#v", saveIdentity)
-		api.Authenticated.Store(saveIdentity.Idk, saveIdentity)
 		// TODO do we id match on first auth?
 		response.WithIDMatch()
 
@@ -162,14 +177,23 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if (req.Client.Cmd == "ident" || req.Client.Cmd == "enable") && req.Client.Opt["cps"] && !accountDisabled {
-		authURL := api.Authenticator.AuthenticateIdentity(req.Client.Idk)
-		log.Printf("Setting CPS Auth: %v", authURL)
-		response.URL = authURL
+	if (req.Client.Cmd == "ident" || req.Client.Cmd == "enable") && identity != nil && !identity.Disabled {
+		// TODO update hardlock and sqrlonly options
+		log.Printf("Authenticated Idk: %#v", identity)
+		authURL, err := api.authenticateIdentity(identity)
+		if err != nil {
+			log.Printf("Failed saving identity: %v", err)
+			w.Write(response.WithTransientError().WithCommandFailed().Encode())
+			return
+		}
+		if req.Client.Opt["cps"] {
+			log.Printf("Setting CPS Auth: %v", authURL)
+			response.URL = authURL
+		}
 	}
 
 	// fail the ident on account disable
-	if (req.Client.Cmd == "ident" || req.Client.Cmd == "enable") && accountDisabled {
+	if req.Client.Cmd == "ident" && identity != nil && identity.Disabled {
 		response.WithCommandFailed()
 	}
 
@@ -191,6 +215,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 				OriginalNut:  hoardCache.OriginalNut,
 				PagNut:       hoardCache.PagNut,
 				LastRequest:  req,
+				Identity:     identity,
 				LastResponse: respBytes,
 			}, api.NutExpiration)
 			if err != nil {

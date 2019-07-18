@@ -12,6 +12,7 @@ This implements the public parts of the SQRL authentication server API as specif
 This library is meant to be pluggable into a broader infrastructure to handle whatever type
 of session management you desire. It also allows pluggable storage options and scales horizontally.
 
-This project is still very much a work in-progress
+This project is still very much a work in-progress. All the endpoints log a ton of debugging information.
+
 [![Documentation](https://godoc.org/github.com/smw1218/sqrl-ssp?status.svg)](https://godoc.org/github.com/smw1218/sqrl-ssp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smw1218/sqrl-ssp)](https://goreportcard.com/report/github.com/smw1218/sqrl-ssp)

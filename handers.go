@@ -127,5 +127,11 @@ func (api *SqrlSspAPI) Pag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(api.Authenticator.AuthenticateIdentity(hoardCache.LastRequest.Client.Idk)))
+	if hoardCache.Identity == nil {
+		log.Printf("Nil identity on pag hoardCache")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Missing identity"))
+		return
+	}
+	w.Write([]byte(api.Authenticator.AuthenticateIdentity(hoardCache.Identity)))
 }

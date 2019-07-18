@@ -14,10 +14,8 @@ package ssp
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 )
 
@@ -55,12 +53,9 @@ type HoardCache struct {
 	OriginalNut  Nut
 	PagNut       Nut
 	LastRequest  *CliRequest
+	Identity     *SqrlIdentity
 	LastResponse []byte
 }
-
-// PagHandler a function that generates a URL to be returned to
-// once auth has succeeded
-type PagHandler func(identity string) string
 
 // Authenticator interface to allow user management triggered by
 // SQRL authentication events.
@@ -70,11 +65,24 @@ type Authenticator interface {
 	// logged in session. This is also called for a new user.
 	// If an error occurs this should return an error
 	// page redirection
-	AuthenticateIdentity(identity string) string
+	AuthenticateIdentity(identity *SqrlIdentity) string
 	// When an identity is rekeyed, it's necessary to swap the identity
 	// associated with a given user. This callback happens when a user
 	// wishes to swap their previous identity for a new one.
-	SwapIdentities(previousIdentity, newIdentity string) error
+	SwapIdentities(previousIdentity, newIdentity *SqrlIdentity) error
+	// This denotes an identity is now removed and this identity
+	// should be disassociated with a user. This does not necessarily
+	// mean the user should be deleted though. The SQRL spec mentions
+	// being able to re-associate another identity at a later time (possibly
+	// during the same login session)
+	RemoveIdentity(identity *SqrlIdentity) error
+}
+
+// AuthStore stores SQRL identities
+type AuthStore interface {
+	FindIdentity(idk string) (*SqrlIdentity, error)
+	SaveIdentity(identity *SqrlIdentity) error
+	DeleteIdentity(idk string) error
 }
 
 // SqrlSspAPI implements the endpoitns outlined here
@@ -83,7 +91,7 @@ type SqrlSspAPI struct {
 	tree          Tree
 	hoard         Hoard
 	NutExpiration time.Duration
-	Authenticated *sync.Map
+	authStore     AuthStore
 	// set to the hostname for serving SQRL urls; this can include a port if necessary
 	HostOverride string
 	// if the SQRL endpoints are not at the root of the host, then this overrides the path where they are hosted
@@ -91,14 +99,19 @@ type SqrlSspAPI struct {
 	Authenticator Authenticator
 }
 
-// NewSqrlSspAPI needs a Tree implementation that produces Nuts
+// NewSqrlSspAPI takes a Tree implementation that produces Nuts.
+// If set to nil, a the API defaults to NewRandomTree(8).
 // Also needs a Hoard to store a retrieve Nuts
-func NewSqrlSspAPI(tree Tree, hoard Hoard) *SqrlSspAPI {
+func NewSqrlSspAPI(tree Tree, hoard Hoard, authenticator Authenticator, authStore AuthStore) *SqrlSspAPI {
+	if tree == nil {
+		tree, _ = NewRandomTree(8)
+	}
 	return &SqrlSspAPI{
 		tree:          tree,
 		hoard:         hoard,
 		NutExpiration: 10 * time.Minute,
-		Authenticated: &sync.Map{},
+		Authenticator: authenticator,
+		authStore:     authStore,
 	}
 }
 
@@ -118,24 +131,25 @@ func (api *SqrlSspAPI) Host(r *http.Request) string {
 	return host
 }
 
-func (api *SqrlSspAPI) findIdentity(idk string) (*SqrlIdentity, error) {
-	if knownUser, ok := api.Authenticated.Load(idk); ok {
-		log.Printf("Found existing identity: %#v", knownUser)
-		if identity, ok := knownUser.(*SqrlIdentity); ok {
-			return identity, nil
-		}
-		return nil, fmt.Errorf("Wrong type for identity %t", knownUser)
-	}
-	return nil, ErrNotFound
-}
-
 func (api *SqrlSspAPI) swapIdentities(previousIdentity, newIdentity *SqrlIdentity) error {
-	err := api.Authenticator.SwapIdentities(previousIdentity.Idk, newIdentity.Idk)
+	err := api.Authenticator.SwapIdentities(previousIdentity, newIdentity)
 	if err != nil {
 		return err
 	}
-	api.Authenticated.Delete(previousIdentity.Idk)
-	return nil
+	return api.authStore.DeleteIdentity(previousIdentity.Idk)
+}
+
+func (api *SqrlSspAPI) removeIdentity(identity *SqrlIdentity) error {
+	err := api.Authenticator.RemoveIdentity(identity)
+	if err != nil {
+		return err
+	}
+	return api.authStore.DeleteIdentity(identity.Idk)
+}
+
+func (api *SqrlSspAPI) authenticateIdentity(identity *SqrlIdentity) (string, error) {
+	redirect := api.Authenticator.AuthenticateIdentity(identity)
+	return redirect, api.authStore.SaveIdentity(identity)
 }
 
 // HTTPSRoot returns the best guess at the https root URL for this server
