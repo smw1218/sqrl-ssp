@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+
+<head>
+    <title>SQRL API Test/Demo</title>
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <link rel="stylesheet" media="all" type="text/css" href="sqrlapi.css" />
+</head>
+
+<body style="padding-bottom: 5em;" link="#CC0000" vlink="#006666" alink="#FF0000">
+    <center>
+        <table style="margin-top:1em;" border="0" cellpadding="0" cellspacing="0">
+            <tr valign="middle">
+                <td><img src="100x100SQRLLogo.png" style="width:100px; height:100px; padding-right:2em;"></td>
+                <td style="color:#B04; font-size:24pt; font-family:MuseoSlab-900;">Welcome to<div
+                        style="margin-top:-0.20em; font-size:52pt;">SQRL</div>
+                </td>
+            </tr>
+        </table>
+
+        <img src="darkbluepixel.gif" width="90%" height="4" border="0" alt="divider" />
+        <div class="red_tight_headline" style="font-size:16pt; margin-top:0.5em;">SQRL Sign In Demo</div>
+        <form method="post" autocomplete="off">
+            <center>
+                <img id="probe" style="display:none;" src="http://www.rebindtest.com/open.gif">
+                <div id="mixed"
+                    style="display:none; width:44em; background:#ffc; margin:2em 0 2em 0; border:#800 4px solid; padding:0.5em 1em 0.7em 1em;">
+                    <span style="text-align:center; font-size:11pt;">This web browser is not retrieving mixed-content
+                        images</span>
+                    <div style="text-align:left; margin-top:0.5em;">This SQRL demo page checks for an installed and
+                        running SQRL client by requesting a tiny GIF image from its built-in web server. But this web
+                        browser has been configured to block the retrieval of passive mixed-content images. This is
+                        uncommon and is not the default configuration for web browsers. If you are unable to allow
+                        passive mixed-content images you should disable SQRL's anti-spoofing CPS protection, which is
+                        not recommended.</div>
+                </div>
+
+                <noscript>
+                    <div
+                        style="width:45em; background:#ffc; margin:2em 0 2em 0; border:#b00 4px solid; padding:0.5em 1em 0.7em 1em;">
+                        <span style="text-align:center; font-size:13pt;"><b>JavaScript is disabled on this
+                                page</b></span>
+                        <div style="text-align:left; margin-top:0.5em;">SQRL can operate without JavaScript. GRC's SQRL
+                            demo pages demonstrate script-free operation of SQRL. But scripting has become a default
+                            assumption and expectation for web sites. And its presence allows for convenient SQRL
+                            automation such as automatic logged-on page updating.&nbsp;&nbsp;<b>So this page requires
+                                JavaScript for its operation.</b></div>
+                    </div>
+                </noscript>
+
+                <div style="margin-bottom:1em;"><b style="font-size:12pt;">This web browser is NOT currently logged into
+                        this SQRL demonstration.</b></div>
+
+                <table cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td
+                            style="text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:9pt; color:#444;">
+                            Click here to<br /><a id="sqrl" href="sqrl://" onclick="gifProbe.onerror();return true;"
+                                tabindex="-1"><img src="Sign-in-with-SQRL-button.png" width="237" height="34"
+                                    border="0" alt="Click to sign in with SQRL" /></a></td>
+                    </tr>
+                </table>
+
+                <div style="text-align:center; color:#990000; font-size:13pt; margin-top:0.5em;"><b></b></div>
+
+                <table cellspacing="0" cellpadding="0"
+                    style="margin-top:2em; border-top:#000 solid 1px; padding-top:0.5em;">
+                    <tr>
+                        <td style="padding:0 10px;"><img id="qrimg" src="" width="66" height="66" border="0"
+                                alt="Scan This QR Code to Logon" /></td>
+                        <td
+                            style="font-family:Arial, Helvetica, sans-serif; text-align:center; font-size:8pt; color:#fff; background:#007CC3; padding:4px 6px;">
+                            <b>S<br />Q<br />R<br />L</b></td>
+                        <td style="padding:0 10px;">You may also login with SQRL using<br />any SQRL-equipped smartphone
+                            by<br />scanning this QR code.</td>
+                    </tr>
+                </table>
+
+                <script type="text/javascript" src="sqrlapi.js"></script>
+                <div
+                    style="color:#900; font-size:12pt; position:fixed; bottom:0%; width:100%; background:#fff; border-top:#00A 1px solid; padding:5px 0;">
+                    <span style="font-family:MuseoSlab-900;">SQRL</span> is completely open and free for any website to
+                    add to its existing sign in.<br /><span style="font-size:10.5pt;">There are <em>no</em> licensing
+                        fees, <em>no</em> third-parties, <em>no one</em> profiting, profiling, tracking or
+                        snooping.</span></div>
+            </center>
+        </form>
+</body>
+
+</html>

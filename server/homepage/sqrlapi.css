@@ -1,0 +1,32 @@
+/*==============================================================================
+                                   SQRLAPI.CSS
+==============================================================================*/
+@font-face {font-family: 'MuseoSlab-900';src: url('/sqrlapi/webfonts/eot/style_183114.eot?#iefix') format('embedded-opentype'),url('/sqrlapi/webfonts/woff/style_183114.woff') format('woff'),url('/sqrlapi/webfonts/ttf/style_183114.ttf') format('truetype'),url('/sqrlapi/webfonts/svg/style_183114.svg#MuseoSlab-900') format('svg');}
+body { width:100%; height:100%; color:#009; background:white; font-size:10pt; font-family: verdana, tahoma, arial, helvetica, sans-serif, "MS Sans Serif"; }
+body, img, button, iframe, ul, li, hr  { margin:0; padding:0; border:0; }
+table { margin:0; padding:0; text-align:left; font-size:10pt; }
+textarea { resize: none; }
+em { font-weight:bold; font-family:Arial, Helvetica, sans-serif; font-style: normal; }
+img#qrimg {	border: 1px white solid; }
+img#qrimg:hover {
+	border: 1px #ccc solid;
+	cursor: none;
+	position: relative;
+   -webkit-transform: scale(2.0);
+   -ms-transform: scale(2.0);
+   -o-transform: scale(2.0);
+   transform: scale(2.0);
+   z-index: 1000;
+}
+* {
+	-webkit-transition: all 0.5s ease-in-out;
+   -moz-transition: all 0.5s ease-in-out;
+   -ms-transition: all 0.5s ease-in-out;
+   -o-transition: all 0.5s ease-in-out;
+   transition: all 0.5s ease-in-out;
+}
+.red_tight_headline  { color:#900; font-size:12pt; text-align:center; margin: 0 0 0.5em 0; }
+.body { width:80%; text-align:left; border-top:#000 1px solid; margin-top:2em; }
+.mono { color:#000; font-family: 'Lucia Console', Consolas, 'Courier New', Courier, monospace; font-size: 13pt; }
+.sqid { font-weight:normal; font-size:11pt; padding-left:1em; }
+.sect { background:#ddf; color:#006; width:80%; padding:0.25em; margin-top:1em; border-top:#006 1px solid; }
