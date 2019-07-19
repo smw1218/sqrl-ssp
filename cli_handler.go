@@ -222,24 +222,25 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Failed saving to hoard: %v", err)
 				response.WithTransientError()
 			}
-			log.Printf("Saved nut %v in hoard", nut)
+			log.Printf("Saved pagnut %v in hoard", nut)
 		}
 	}
-	if req.Client.Cmd == "query" {
-		err = api.hoard.Save(nut, &HoardCache{
-			State:        "associated",
-			RemoteIP:     hoardCache.RemoteIP,
-			OriginalNut:  hoardCache.OriginalNut,
-			PagNut:       hoardCache.PagNut,
-			LastRequest:  req,
-			LastResponse: respBytes,
-		}, api.NutExpiration)
-		if err != nil {
-			log.Printf("Failed saving to hoard: %v", err)
-			response.WithTransientError()
-		}
-		log.Printf("Saved nut %v in hoard", nut)
+
+	// always save back the new nut
+	err = api.hoard.Save(nut, &HoardCache{
+		State:        "associated",
+		RemoteIP:     hoardCache.RemoteIP,
+		OriginalNut:  hoardCache.OriginalNut,
+		PagNut:       hoardCache.PagNut,
+		LastRequest:  req,
+		LastResponse: respBytes,
+	}, api.NutExpiration)
+	if err != nil {
+		log.Printf("Failed saving to hoard: %v", err)
+		response.WithTransientError()
 	}
+	log.Printf("Saved nut %v in hoard", nut)
+
 	// query
 
 	w.Write(respBytes)

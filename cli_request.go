@@ -56,13 +56,13 @@ func ParseSqrlQuery(query string) (params map[string]string, err error) {
 // see https://www.grc.com/sqrl/protocol.htm in the section "The content of the “client” parameter."
 // This is owned by a ClientRequest and probably shouldn't be used on it's own.
 type ClientBody struct {
-	Version []int
-	Cmd     string
-	Opt     map[string]bool
-	Suk     string // Sqrl64.Encoded
-	Vuk     string // Sqrl64.Encoded
-	Pidk    string // Sqrl64.Encoded
-	Idk     string // Sqrl64.Encoded
+	Version []int           `json:"version"`
+	Cmd     string          `json:"cmd"`
+	Opt     map[string]bool `json:"opt"`
+	Suk     string          `json:"suk"`  // Sqrl64.Encoded
+	Vuk     string          `json:"vuk"`  // Sqrl64.Encoded
+	Pidk    string          `json:"pidk"` // Sqrl64.Encoded
+	Idk     string          `json:"idk"`  // Sqrl64.Encoded
 }
 
 // PublicKey decodes and validates the Idk as a ed25519.PublicKey
@@ -115,23 +115,14 @@ func ClientBodyFromParams(params map[string]string) (*ClientBody, error) {
 	return cb, nil
 }
 
-// SqrlIdentity holds all the info about a valid SQRL identity
-type SqrlIdentity struct {
-	Disabled bool
-	Idk      string
-	Suk      string
-	Vuk      string
-	Pidk     string // TODO do we need to keep track of Pidk?
-}
-
 // CliRequest holds the data sent from the SQRL client to the /cli.sqrl endpoint
 type CliRequest struct {
-	Client           *ClientBody
-	Server           []byte
-	IdsSigningString []byte
-	Ids              []byte
-	Pids             []byte
-	Urs              []byte
+	Client           *ClientBody `json:"client"`
+	Server           []byte      `json:"server"`
+	IdsSigningString []byte      `json:"idsSigningString"`
+	Ids              []byte      `json:"ids"`
+	Pids             []byte      `json:"pids"`
+	Urs              []byte      `json:"urs"`
 }
 
 // Identity creates an identity from a request

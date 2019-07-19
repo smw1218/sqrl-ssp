@@ -48,13 +48,22 @@ type Hoard interface {
 
 // HoardCache is the state associated with a Nut
 type HoardCache struct {
-	State        string
-	RemoteIP     string
-	OriginalNut  Nut
-	PagNut       Nut
-	LastRequest  *CliRequest
-	Identity     *SqrlIdentity
-	LastResponse []byte
+	State        string        `json:"state"`
+	RemoteIP     string        `json:"remoteIP"`
+	OriginalNut  Nut           `json:"originalNut"`
+	PagNut       Nut           `json:"pagNut"`
+	LastRequest  *CliRequest   `json:"lastRequest"`
+	Identity     *SqrlIdentity `json:"identity"`
+	LastResponse []byte        `json:"lastResponse"`
+}
+
+// SqrlIdentity holds all the info about a valid SQRL identity
+type SqrlIdentity struct {
+	Disabled bool   `json:"disabled"`
+	Idk      string `json:"idk"`
+	Suk      string `json:"suk"`
+	Vuk      string `json:"vuk"`
+	Pidk     string `json:"pidk"` // TODO do we need to keep track of Pidk?
 }
 
 // Authenticator interface to allow user management triggered by
