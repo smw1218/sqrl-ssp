@@ -1,4 +1,4 @@
-// Implements the SQRL server-side protocol (SSP). The SqrlSspApi
+// Package ssp implements the SQRL server-side protocol (SSP). The SqrlSspApi
 // is a stateful server object that manages SQRL identities. The /cli.sqrl
 // exposed at Cli is the only endpoint that is required to operate in
 // conjunction with the SQRL client. This endpoint is required to be served

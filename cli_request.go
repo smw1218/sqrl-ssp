@@ -135,6 +135,11 @@ func (cr *CliRequest) Identity() *SqrlIdentity {
 	}
 }
 
+// IsAuthCommand is a command that authenticates (ident, enable)
+func (cr *CliRequest) IsAuthCommand() bool {
+	return cr.Client.Cmd == "ident" || cr.Client.Cmd == "enable"
+}
+
 // VerifySignature verifies the ids signature against
 // the idk in the ClientBody. It also calls
 // VerifyPidsSignature if necessary.

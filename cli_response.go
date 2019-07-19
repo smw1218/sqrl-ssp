@@ -43,6 +43,10 @@ type CliResponse struct {
 	Suk     string
 	Ask     string
 	Can     string
+
+	// HoardCache is not serialized but the encoded response is saved here
+	// so we can check it in the next request
+	HoardCache *HoardCache
 }
 
 // NewCliResponse creates a minimal valid CliResponse object
