@@ -147,7 +147,6 @@ func (api *SqrlSspAPI) finishCliResponse(req *CliRequest, response *CliResponse,
 		accountDisabled = identity.Disabled
 	}
 	if req.IsAuthCommand() && !accountDisabled {
-		// TODO update hardlock and sqrlonly options
 		log.Printf("Authenticated Idk: %#v", identity)
 		authURL, err := api.authenticateIdentity(identity)
 		if err != nil {
@@ -240,7 +239,7 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 	}
 
 	// validating the current request and associated Idk's match
-	if hoardCache.LastResponse != nil && hoardCache.LastRequest.Client.Idk != req.Client.Idk {
+	if hoardCache.LastRequest != nil && hoardCache.LastRequest.Client.Idk != req.Client.Idk {
 		log.Printf("Identity mismatch orig: %v current %v", hoardCache.LastRequest.Client.Idk, req.Client.Idk)
 		response.WithCommandFailed().WithClientFailure().WithBadIDAssociation()
 		return fmt.Errorf("validation error")
@@ -251,6 +250,10 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 
 func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, identity *SqrlIdentity) error {
 	response.WithIDMatch()
+	changed := false
+	if req.IsAuthCommand() {
+		changed = req.UpdateIdentity(identity)
+	}
 	if req.Client.Cmd == "enable" || req.Client.Cmd == "remove" {
 		err := req.VerifyUrs(identity.Vuk)
 		if err != nil {
@@ -264,12 +267,7 @@ func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, ide
 		if req.Client.Cmd == "enable" {
 			log.Printf("Reenabled account: %v", identity.Idk)
 			identity.Disabled = false
-			err := api.authStore.SaveIdentity(identity)
-			if err != nil {
-				log.Printf("Failed saving identity %v: %v", identity.Idk, err)
-				response.WithClientFailure().WithCommandFailed()
-				return fmt.Errorf("identity error")
-			}
+			changed = true
 		} else if req.Client.Cmd == "remove" {
 			err := api.removeIdentity(identity)
 			if err != nil {
@@ -282,16 +280,19 @@ func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, ide
 	}
 	if req.Client.Cmd == "disable" {
 		identity.Disabled = true
+		changed = true
+	}
+
+	if identity.Disabled {
+		response.WithSQRLDisabled()
+	}
+	if changed {
 		err := api.authStore.SaveIdentity(identity)
 		if err != nil {
 			log.Printf("Failed saving identity %v: %v", identity.Idk, err)
 			response.WithClientFailure().WithCommandFailed()
 			return fmt.Errorf("identity error")
 		}
-	}
-
-	if identity.Disabled {
-		response.WithSQRLDisabled()
 	}
 	return nil
 }

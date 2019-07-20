@@ -128,11 +128,22 @@ type CliRequest struct {
 // Identity creates an identity from a request
 func (cr *CliRequest) Identity() *SqrlIdentity {
 	return &SqrlIdentity{
-		Idk:  cr.Client.Idk,
-		Suk:  cr.Client.Suk,
-		Vuk:  cr.Client.Vuk,
-		Pidk: cr.Client.Pidk,
+		Idk:      cr.Client.Idk,
+		Suk:      cr.Client.Suk,
+		Vuk:      cr.Client.Vuk,
+		Pidk:     cr.Client.Pidk,
+		SQRLOnly: cr.Client.Opt["sqrlonly"],
+		Hardlock: cr.Client.Opt["hardlock"],
 	}
+}
+
+// UpdateIdentity updates identity from request
+func (cr *CliRequest) UpdateIdentity(identity *SqrlIdentity) bool {
+	copy := &SqrlIdentity{}
+	*copy = *identity
+	identity.SQRLOnly = cr.Client.Opt["sqrlonly"]
+	identity.Hardlock = cr.Client.Opt["hardlock"]
+	return *identity == *copy
 }
 
 // IsAuthCommand is a command that authenticates (ident, enable)

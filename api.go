@@ -59,11 +59,13 @@ type HoardCache struct {
 
 // SqrlIdentity holds all the info about a valid SQRL identity
 type SqrlIdentity struct {
-	Disabled bool   `json:"disabled"`
-	Idk      string `json:"idk"`
+	Idk      string `json:"idk" sql:"primary_key"`
 	Suk      string `json:"suk"`
 	Vuk      string `json:"vuk"`
 	Pidk     string `json:"pidk"` // TODO do we need to keep track of Pidk?
+	SQRLOnly bool   `json:"sqrlOnly"`
+	Hardlock bool   `json:"hardlock"`
+	Disabled bool   `json:"disabled"`
 }
 
 // Authenticator interface to allow user management triggered by
