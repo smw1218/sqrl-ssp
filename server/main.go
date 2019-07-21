@@ -12,21 +12,35 @@ import (
 
 var certFile, keyFile string
 var hostOverride, rootPath string
+var port int
+var help string
 
 func main() {
 	flag.StringVar(&keyFile, "key", "", "key.pem file for TLS")
 	flag.StringVar(&certFile, "cert", "", "cert.pem file for TLS")
 	flag.StringVar(&hostOverride, "h", "", "hostname used in creating URLs")
 	flag.StringVar(&rootPath, "path", "", "path used as the root for the SQRL handlers (if not /)")
+	flag.IntVar(&port, "p", 8000, "port to listen on")
+	flag.StringVar(&help, "help", "", "print usage")
+
 	flag.Parse()
+
+	if len(flag.Args()) > 0 || help != "" {
+		flag.PrintDefaults()
+		return
+	}
+
 	tree, err := ssp.NewRandomTree(8)
 	if err != nil {
 		log.Fatalf("Failed to create tree: %v", err)
 	}
 
 	authStore := ssp.NewMapAuthStore()
+	hoard := ssp.NewMapHoard()
+	// redisClient := redis.NewUniversalClient(&redis.UniversalOptions{})
+	// hoard := redishoard.NewHoard(redisClient)
 	sspAPI := ssp.NewSqrlSspAPI(tree,
-		ssp.NewMapHoard(),
+		hoard,
 		&auther{hostOverride, rootPath},
 		authStore)
 	sspAPI.HostOverride = hostOverride
@@ -52,12 +66,13 @@ func main() {
 	http.HandleFunc("/cli.sqrl", sspAPI.Cli)
 	http.HandleFunc("/", hph.Handle)
 
+	listenOn := fmt.Sprintf(":%d", port)
 	if certFile != "" && keyFile != "" {
-		log.Printf("Listening TLS on port 8000")
-		err = http.ListenAndServeTLS(":8000", certFile, keyFile, nil)
+		log.Printf("Listening TLS on port %d", port)
+		err = http.ListenAndServeTLS(listenOn, certFile, keyFile, nil)
 	} else {
-		log.Printf("Listening on port 8000")
-		err = http.ListenAndServe(":8000", nil)
+		log.Printf("Listening on port %d", port)
+		err = http.ListenAndServe(listenOn, nil)
 	}
 	if err != nil {
 		log.Printf("Failed server start: %v", err)
