@@ -1,6 +1,7 @@
 package ssp
 
 import (
+	"bytes"
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
@@ -65,6 +66,48 @@ type ClientBody struct {
 	Idk     string          `json:"idk"`  // Sqrl64.Encoded
 }
 
+// Encode returns the ClientBody encoded in Sqrl64
+func (cb *ClientBody) Encode() []byte {
+	var b bytes.Buffer
+
+	// TODO be less lazy and support ranges
+	b.WriteString("ver=")
+	for i, v := range cb.Version {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		b.WriteString(strconv.Itoa(v))
+	}
+	b.WriteString("\r\n")
+
+	b.WriteString(fmt.Sprintf("cmd=%v\r\n", cb.Cmd))
+
+	opts := make([]string, 0, len(cb.Opt))
+	for k := range cb.Opt {
+		opts = append(opts, k)
+	}
+	b.WriteString(fmt.Sprintf("opt=%x\r\n", strings.Join(opts, "~")))
+
+	b.WriteString(fmt.Sprintf("idk=%v\r\n", cb.Idk))
+
+	if cb.Suk != "" {
+		b.WriteString(fmt.Sprintf("suk=%v\r\n", cb.Suk))
+	}
+
+	if cb.Vuk != "" {
+		b.WriteString(fmt.Sprintf("vuk=%v\r\n", cb.Vuk))
+	}
+
+	if cb.Pidk != "" {
+		b.WriteString(fmt.Sprintf("pidk=%v\r\n", cb.Pidk))
+	}
+
+	encoded := Sqrl64.EncodeToString(b.Bytes())
+	log.Printf("Encoded response: <%v>", encoded)
+	return []byte(encoded)
+
+}
+
 // PublicKey decodes and validates the Idk as a ed25519.PublicKey
 func (cb *ClientBody) PublicKey() (ed25519.PublicKey, error) {
 	pubKey, err := Sqrl64.DecodeString(cb.Idk)
@@ -117,12 +160,12 @@ func ClientBodyFromParams(params map[string]string) (*ClientBody, error) {
 
 // CliRequest holds the data sent from the SQRL client to the /cli.sqrl endpoint
 type CliRequest struct {
-	Client           *ClientBody `json:"client"`
-	Server           []byte      `json:"server"`
-	IdsSigningString []byte      `json:"idsSigningString"`
-	Ids              []byte      `json:"ids"`
-	Pids             []byte      `json:"pids"`
-	Urs              []byte      `json:"urs"`
+	Client        *ClientBody `json:"client"`
+	ClientEncoded string      `json:"clientEncoded"`
+	Server        string      `json:"server"`
+	Ids           string      `json:"ids"`
+	Pids          string      `json:"pids"`
+	Urs           string      `json:"urs"`
 }
 
 // Identity creates an identity from a request
@@ -135,6 +178,11 @@ func (cr *CliRequest) Identity() *SqrlIdentity {
 		SQRLOnly: cr.Client.Opt["sqrlonly"],
 		Hardlock: cr.Client.Opt["hardlock"],
 	}
+}
+
+// SigningString creates the string that is signed by ids, pids and urs
+func (cr *CliRequest) SigningString() []byte {
+	return []byte(cr.ClientEncoded + cr.Server)
 }
 
 // UpdateIdentity updates identity from request
@@ -159,11 +207,15 @@ func (cr *CliRequest) VerifySignature() error {
 	if err != nil {
 		return err
 	}
-	if !ed25519.Verify(pubKey, cr.IdsSigningString, cr.Ids) {
+	decodedIds, err := Sqrl64.DecodeString(cr.Ids)
+	if err != nil {
+		return fmt.Errorf("invalid ids: %v", err)
+	}
+	if !ed25519.Verify(pubKey, cr.SigningString(), decodedIds) {
 		return fmt.Errorf("signature verification failed")
 	}
 	// if pids or pidk exists, the signature must be valid
-	if cr.Pids != nil || cr.Client.Pidk != "" {
+	if cr.Pids != "" || cr.Client.Pidk != "" {
 		return cr.VerifyPidsSignature()
 	}
 	return nil
@@ -176,7 +228,11 @@ func (cr *CliRequest) VerifyPidsSignature() error {
 	if err != nil {
 		return err
 	}
-	if !ed25519.Verify(pubKey, cr.IdsSigningString, cr.Pids) {
+	decodedPids, err := Sqrl64.DecodeString(cr.Pids)
+	if err != nil {
+		return fmt.Errorf("invalid pids: %v", err)
+	}
+	if !ed25519.Verify(pubKey, cr.SigningString(), decodedPids) {
 		return fmt.Errorf("pids signature verification failed")
 	}
 	return nil
@@ -186,8 +242,12 @@ func (cr *CliRequest) VerifyPidsSignature() error {
 // This call will fail if the urs doesn't exist because it is required
 // for several operations. Don't call this if you don't need it.
 func (cr *CliRequest) VerifyUrs(vuk string) error {
-	if vuk == "" || cr.Urs == nil {
+	if vuk == "" || cr.Urs == "" {
 		return fmt.Errorf("vuk or urs not valid")
+	}
+	decodedUrs, err := Sqrl64.DecodeString(cr.Urs)
+	if err != nil {
+		return fmt.Errorf("invalid urs: %v", err)
 	}
 	pubKey, err := base64.RawURLEncoding.DecodeString(vuk)
 	if err != nil {
@@ -197,7 +257,7 @@ func (cr *CliRequest) VerifyUrs(vuk string) error {
 		return fmt.Errorf("invalid vuk")
 	}
 
-	if !ed25519.Verify(pubKey, cr.IdsSigningString, cr.Urs) {
+	if !ed25519.Verify(pubKey, cr.SigningString(), decodedUrs) {
 		log.Printf("signature verification failed")
 	}
 	return nil
@@ -206,7 +266,7 @@ func (cr *CliRequest) VerifyUrs(vuk string) error {
 // ValidateLastResponse checks to make sure the response on this request
 // matches a stored on that's passed in.
 func (cr *CliRequest) ValidateLastResponse(lastRepsonse []byte) bool {
-	equal := subtle.ConstantTimeCompare(cr.Server, lastRepsonse)
+	equal := subtle.ConstantTimeCompare([]byte(cr.Server), lastRepsonse)
 	return equal == 1
 }
 
@@ -226,39 +286,48 @@ func ParseCliRequest(r *http.Request) (*CliRequest, error) {
 		return nil, fmt.Errorf("invalid cli.sqrl request: %v", err)
 	}
 
-	// TODO validate presence of required parameters
-	signingString := params.Get("client")
-	signingString += params.Get("server")
-
-	decoded := make(map[string][]byte, len(params))
-	for k, p := range params {
-		dec, err := Sqrl64.DecodeString(p[0])
-		if err != nil {
-			return nil, fmt.Errorf("invalid cli.sqrl request: %v", err)
-		}
-		decoded[k] = dec
+	cli := &CliRequest{
+		ClientEncoded: params.Get("client"),
+		Server:        params.Get("server"),
+		Ids:           params.Get("ids"),
+		Pids:          params.Get("pids"),
+		Urs:           params.Get("urs"),
 	}
 
-	clientParams, err := ParseSqrlQuery(string(decoded["client"]))
+	decodedClient, err := Sqrl64.DecodeString(cli.ClientEncoded)
+	if err != nil {
+		return nil, fmt.Errorf("incalid client parameter: %v", err)
+	}
+	clientParams, err := ParseSqrlQuery(string(decodedClient))
 	if err != nil {
 		return nil, fmt.Errorf("invalid cli.sqrl client body: %v", err)
 	}
 
-	cb, err := ClientBodyFromParams(clientParams)
+	cli.Client, err = ClientBodyFromParams(clientParams)
 	if err != nil {
 		return nil, fmt.Errorf("invalid client param: %v", err)
-	}
-
-	cli := &CliRequest{
-		Client:           cb,
-		Server:           []byte(params.Get("server")),
-		IdsSigningString: []byte(signingString),
-		Ids:              decoded["ids"],
-		Pids:             decoded["pids"],
-		Urs:              decoded["urs"],
 	}
 
 	// If we get here, we can return the cli along with the error
 	err = cli.VerifySignature()
 	return cli, err
+}
+
+// Encode creates the form encoded POST body from CliRequest
+func (cr *CliRequest) Encode() string {
+	req := make(url.Values)
+	if cr.ClientEncoded != "" {
+		req.Add("client", cr.ClientEncoded)
+	} else {
+		req.Add("client", string(cr.Client.Encode()))
+	}
+	req.Add("server", string(cr.Server))
+	req.Add("ids", cr.Ids)
+	if cr.Pids != "" {
+		req.Add("pids", cr.Pids)
+	}
+	if cr.Urs != "" {
+		req.Add("urs", cr.Urs)
+	}
+	return req.Encode()
 }
