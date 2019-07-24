@@ -93,8 +93,8 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO do we id match on first auth?
-		response.WithIDMatch()
+		// TODO do we id match on first auth? grc says nope
+		// response.WithIDMatch()
 	}
 	api.setSuk(req, response, identity)
 

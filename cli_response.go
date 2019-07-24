@@ -31,6 +31,19 @@ const (
 	TIFBadIDAssociation = 0x100
 )
 
+// TIFDesc description of the TIF bits
+var TIFDesc = map[uint32]string{
+	TIFIDMatch:              "ID Matched",
+	TIFPreviousIDMatch:      "Previous ID Matched",
+	TIFIPMatched:            "IP Matched",
+	TIFSQRLDisabled:         "Identity disabled",
+	TIFFunctionNotSupported: "Command not recognized",
+	TIFTransientError:       "Server Error",
+	TIFCommandFailed:        "Command failed",
+	TIFClientFailure:        "Bad client request",
+	TIFBadIDAssociation:     "Mismatch of nut to idk",
+}
+
 // CliResponse encodes a response to the SQRL client
 // As specified https://www.grc.com/sqrl/semantics.htm
 type CliResponse struct {
@@ -170,4 +183,33 @@ func (cr *CliResponse) Encode() []byte {
 	encoded := Sqrl64.EncodeToString(b.Bytes())
 	log.Printf("Encoded response: <%v>", encoded)
 	return []byte(encoded)
+}
+
+func ParseCliResponse(body []byte) (*CliResponse, error) {
+	decoded := make([]byte, Sqrl64.DecodedLen(len(body)))
+	_, err := Sqrl64.Decode(decoded, body)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+	params, err := ParseSqrlQuery(string(decoded))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse response: %v", err)
+	}
+
+	tifbig, err := strconv.ParseUint(params["tif"], 16, 32)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse tif: %v", err)
+	}
+
+	return &CliResponse{
+		Version: []int{1},
+		Nut:     Nut(params["nut"]),
+		TIF:     uint32(tifbig),
+		Qry:     params["qry"],
+		URL:     params["url"],
+		Sin:     params["sin"],
+		Suk:     params["suk"],
+		Ask:     params["ask"],
+		Can:     params["can"],
+	}, nil
 }

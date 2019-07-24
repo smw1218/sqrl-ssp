@@ -68,6 +68,9 @@ type ClientBody struct {
 
 // Encode returns the ClientBody encoded in Sqrl64
 func (cb *ClientBody) Encode() []byte {
+	if cb == nil {
+		return []byte{}
+	}
 	var b bytes.Buffer
 
 	// TODO be less lazy and support ranges
@@ -82,11 +85,13 @@ func (cb *ClientBody) Encode() []byte {
 
 	b.WriteString(fmt.Sprintf("cmd=%v\r\n", cb.Cmd))
 
-	opts := make([]string, 0, len(cb.Opt))
-	for k := range cb.Opt {
-		opts = append(opts, k)
+	if len(cb.Opt) > 0 {
+		opts := make([]string, 0, len(cb.Opt))
+		for k := range cb.Opt {
+			opts = append(opts, k)
+		}
+		b.WriteString(fmt.Sprintf("opt=%v\r\n", strings.Join(opts, "~")))
 	}
-	b.WriteString(fmt.Sprintf("opt=%x\r\n", strings.Join(opts, "~")))
 
 	b.WriteString(fmt.Sprintf("idk=%v\r\n", cb.Idk))
 
@@ -182,6 +187,9 @@ func (cr *CliRequest) Identity() *SqrlIdentity {
 
 // SigningString creates the string that is signed by ids, pids and urs
 func (cr *CliRequest) SigningString() []byte {
+	if cr.ClientEncoded == "" {
+		cr.ClientEncoded = string(cr.Client.Encode())
+	}
 	return []byte(cr.ClientEncoded + cr.Server)
 }
 
@@ -322,6 +330,7 @@ func (cr *CliRequest) Encode() string {
 		req.Add("client", string(cr.Client.Encode()))
 	}
 	req.Add("server", string(cr.Server))
+
 	req.Add("ids", cr.Ids)
 	if cr.Pids != "" {
 		req.Add("pids", cr.Pids)
@@ -329,5 +338,6 @@ func (cr *CliRequest) Encode() string {
 	if cr.Urs != "" {
 		req.Add("urs", cr.Urs)
 	}
+
 	return req.Encode()
 }
