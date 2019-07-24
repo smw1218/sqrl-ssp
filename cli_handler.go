@@ -22,7 +22,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	req, err := ParseCliRequest(r)
 	if err != nil {
 		log.Printf("Can't parse body or bad signature: %v", err)
-		w.Write(response.WithClientFailure().Encode())
+		w.Write(response.WithClientFailure().WithCommandFailed().Encode())
 		return
 	}
 	// Signature is OK from here on!
