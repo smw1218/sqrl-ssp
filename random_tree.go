@@ -36,6 +36,7 @@ func (rt *RandomTree) valueReader() {
 		if err != nil {
 			log.Printf("error reading random bytes: %v", err)
 			time.Sleep(time.Millisecond * 10)
+			continue
 		}
 		rt.valueChan <- Nut(Sqrl64.EncodeToString(valueBytes))
 	}
