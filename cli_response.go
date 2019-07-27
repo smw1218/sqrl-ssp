@@ -185,6 +185,7 @@ func (cr *CliResponse) Encode() []byte {
 	return []byte(encoded)
 }
 
+// ParseCliResponse parses a server response
 func ParseCliResponse(body []byte) (*CliResponse, error) {
 	decoded := make([]byte, Sqrl64.DecodedLen(len(body)))
 	_, err := Sqrl64.Decode(decoded, body)

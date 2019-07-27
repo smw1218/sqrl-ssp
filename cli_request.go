@@ -266,7 +266,7 @@ func (cr *CliRequest) VerifyUrs(vuk string) error {
 	}
 
 	if !ed25519.Verify(pubKey, cr.SigningString(), decodedUrs) {
-		log.Printf("signature verification failed")
+		return fmt.Errorf("signature verification failed")
 	}
 	return nil
 }
