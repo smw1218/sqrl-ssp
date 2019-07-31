@@ -1,6 +1,7 @@
 package ssp
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,20 +10,62 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
+type nutJson struct {
+	Nut        Nut `json:"nut"`
+	Pagnut     Nut `json:"pag"`
+	Expiration int `json:"exp"`
+}
+
 // Nut implements the /nut.sqrl endpoint
 // TODO sin, ask and 1-9 params
 func (api *SqrlSspAPI) Nut(w http.ResponseWriter, r *http.Request) {
-	nut, err := api.tree.Nut()
+	hoardCache, err := api.createAndSaveNut(r)
 	if err != nil {
-		log.Printf("Failed generating nut: %v", err)
+		log.Print(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	if r.Header.Get("Accept") == "application/json" {
+		w.Header().Add("Content-Type", "application/json")
+		respObj := &nutJson{
+			Nut:        hoardCache.OriginalNut,
+			Pagnut:     hoardCache.PagNut,
+			Expiration: api.NutExpirationSeconds(),
+		}
+		enc, err := json.Marshal(respObj)
+		if err != nil {
+			log.Printf("Failed json encode: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(enc)
+		return
+	}
+	w.Header().Add("Content-Type", "application/x-www-form-urlencoded")
+	values := make(url.Values)
+	values.Add("nut", string(hoardCache.OriginalNut))
+	values.Add("pag", string(hoardCache.PagNut))
+	values.Add("exp", fmt.Sprintf("%d", api.NutExpirationSeconds()))
+
+	if referer := r.Header.Get("Referer"); referer != "" {
+		values.Add("can", Sqrl64.EncodeToString([]byte(referer)))
+	}
+
+	_, err = w.Write([]byte(values.Encode()))
+	if err != nil {
+		log.Printf("Nut response write error: %v", err)
+	}
+}
+
+func (api *SqrlSspAPI) createAndSaveNut(r *http.Request) (*HoardCache, error) {
+	nut, err := api.tree.Nut()
+	if err != nil {
+		return nil, fmt.Errorf("Failed generating nut: %v", err)
+	}
 	pagnut, err := api.tree.Nut()
 	if err != nil {
-		log.Printf("Failed generating nut: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("Failed generating nut: %v", err)
 	}
 
 	hoardCache := &HoardCache{
@@ -34,25 +77,10 @@ func (api *SqrlSspAPI) Nut(w http.ResponseWriter, r *http.Request) {
 	// store the nut in the hoard
 	api.hoard.Save(nut, hoardCache, api.NutExpiration)
 	if err != nil {
-		log.Printf("Failed to save a nut: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("Failed to save a nut: %v", err)
 	}
 	log.Printf("Saved nut %v in hoard from %v", nut, hoardCache.RemoteIP)
-
-	w.Header().Add("Content-Type", "application/x-www-form-urlencoded")
-	values := make(url.Values)
-	values.Add("nut", string(nut))
-	values.Add("pag", string(pagnut))
-
-	if referer := r.Header.Get("Referer"); referer != "" {
-		values.Add("can", Sqrl64.EncodeToString([]byte(referer)))
-	}
-
-	_, err = w.Write([]byte(values.Encode()))
-	if err != nil {
-		log.Printf("Nut response write error: %v", err)
-	}
+	return hoardCache, nil
 }
 
 func (api *SqrlSspAPI) getAndDelete(nut Nut) (*HoardCache, error) {
@@ -66,10 +94,16 @@ func (api *SqrlSspAPI) getAndDelete(nut Nut) (*HoardCache, error) {
 // PNG implements the /png.sqrl endpoint
 func (api *SqrlSspAPI) PNG(w http.ResponseWriter, r *http.Request) {
 	nut := r.URL.Query().Get("nut")
+	var hoardCache *HoardCache
+	var err error
 	if nut == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Missing required nut parameter"))
-		return
+		// create a nut
+		hoardCache, err = api.createAndSaveNut(r)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		nut = string(hoardCache.OriginalNut)
 	}
 
 	params := make(url.Values)
@@ -90,8 +124,17 @@ func (api *SqrlSspAPI) PNG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hoardCache != nil {
+		w.Header().Add("Sqrl-Nut", string(hoardCache.OriginalNut))
+		w.Header().Add("Sqrl-Pag", string(hoardCache.PagNut))
+		w.Header().Add("Sqrl-Exp", fmt.Sprintf("%d", api.NutExpirationSeconds()))
+	}
 	w.Header().Add("Content-Type", "image/png")
 	w.Write(png)
+}
+
+type pagJson struct {
+	URL string `json:"url"`
 }
 
 // Pag implements the /pag.sqrl endpoint
@@ -133,5 +176,21 @@ func (api *SqrlSspAPI) Pag(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Missing identity"))
 		return
 	}
+
+	if r.Header.Get("Accept") == "application/json" {
+		w.Header().Add("Content-Type", "application/json")
+		respObj := &pagJson{
+			URL: api.Authenticator.AuthenticateIdentity(hoardCache.Identity),
+		}
+		enc, err := json.Marshal(respObj)
+		if err != nil {
+			log.Printf("Failed json encode: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(enc)
+		return
+	}
+
 	w.Write([]byte(api.Authenticator.AuthenticateIdentity(hoardCache.Identity)))
 }

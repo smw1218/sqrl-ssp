@@ -110,6 +110,10 @@ type SqrlSspAPI struct {
 	Authenticator Authenticator
 }
 
+func (api *SqrlSspAPI) NutExpirationSeconds() int {
+	return int(api.NutExpiration / time.Second)
+}
+
 // NewSqrlSspAPI takes a Tree implementation that produces Nuts.
 // If set to nil, a the API defaults to NewRandomTree(8).
 // Also needs a Hoard to store a retrieve Nuts

@@ -42,3 +42,43 @@ Trees produce Nuts. There are several ways to produce a secure nonce. GRC reccom
 does not easily scale horizontally. Multiple servers could produce the same nonce if they are not externally coordinated (like through
 a globally consistent counter like a PostgreSQL sequence.) The ssp package provides ssp.GrcTree as an implementation of this, but I 
 reccommend using ssp.RandomTree if you're using multiple servers.
+
+## API ##
+This package only implements the public parts of the SSP API intentionally. The callbacks provided by the Authenticator interface
+should allow integration with any auth system; includig embedding in a larger existing auth service or aloowing the SSP service to
+stand alone and send requests to another authorization and/or user management service.
+
+I've also made some convenient additions to the standard API.
+
+### /nut.sqrl ###
+In addition to the nut, this endpoint returns a "pag" parameter that must be used by the web browser (or other user-agent)
+to poll the /pag.sqrl endpoint. For security, it's required to tie the nut to the original requestor so that another
+casual observer of the QR code cannot hijack authentication. The GRC server does this implicitly through browser cookies.
+The pagnut makes this explicit and is not tied to cookies to make it more friendly to API-only usage. The pag value must 
+be kept secret at the user-agent to ensure security.
+
+I've also added an "exp" parameter which is the expiration in seconds of the nut. This may be used to refresh the nut/png
+to prevent users from failing to authenticate due to using a stale nut.
+
+I also support a JSON version of the response that can be accessed by adding "Accept: application/json" header to the request.
+By default it always returns application/x-www-form-urlencoded as per the GRC spec.
+
+### /png.sqrl ###
+Normally, a "nut" parameter which comes from the /nut.sqrl endpoint is required to produce a valid QR code. I've added
+some additional functionality to allow this to be one-step. Calling /png.sqrl with no parameters will return a new QR
+code with the nut values as headers:
+
+    Sqrl-Nut
+    Sqrl-Pag
+    Sqrl-Exp
+
+If a user-agent has easy access to the headers of the image request, this is a good way to get everything in one call.
+These headers are NOT included if the nut parameter is provided as it is assumed the caller has already gotten them from
+the /nut.sqrl endpoint.
+
+### /pag.sqrl ###
+This endpoint requires sending both the "nut" and "pag" parameters. See section for /nut.sqrl.
+Otherwise it follows the GRC spec and returns a redirect URL that should authorize the user.
+
+I also support a JSON version of the response that can be accessed by adding "Accept: application/json" header to the request.
+The response body is an object with a single "url" parameter.
