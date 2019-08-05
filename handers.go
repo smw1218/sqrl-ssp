@@ -10,7 +10,7 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
-type nutJson struct {
+type nutJSON struct {
 	Nut        Nut `json:"nut"`
 	Pagnut     Nut `json:"pag"`
 	Expiration int `json:"exp"`
@@ -28,7 +28,7 @@ func (api *SqrlSspAPI) Nut(w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Add("Content-Type", "application/json")
-		respObj := &nutJson{
+		respObj := &nutJSON{
 			Nut:        hoardCache.OriginalNut,
 			Pagnut:     hoardCache.PagNut,
 			Expiration: api.NutExpirationSeconds(),
@@ -133,7 +133,7 @@ func (api *SqrlSspAPI) PNG(w http.ResponseWriter, r *http.Request) {
 	w.Write(png)
 }
 
-type pagJson struct {
+type pagJSON struct {
 	URL string `json:"url"`
 }
 
@@ -179,7 +179,7 @@ func (api *SqrlSspAPI) Pag(w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Add("Content-Type", "application/json")
-		respObj := &pagJson{
+		respObj := &pagJSON{
 			URL: api.Authenticator.AuthenticateIdentity(hoardCache.Identity),
 		}
 		enc, err := json.Marshal(respObj)

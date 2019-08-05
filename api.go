@@ -87,6 +87,10 @@ type Authenticator interface {
 	// being able to re-associate another identity at a later time (possibly
 	// during the same login session)
 	RemoveIdentity(identity *SqrlIdentity) error
+	// Send an ask response back to the SQRL client.
+	// Since this is triggered on query and not ident,
+	// the identity may only contain Idk
+	AskResponse(identity *SqrlIdentity) *Ask
 }
 
 // AuthStore stores SQRL identities
@@ -110,6 +114,7 @@ type SqrlSspAPI struct {
 	Authenticator Authenticator
 }
 
+// NutExpirationSeconds has a self-explanatory name
 func (api *SqrlSspAPI) NutExpirationSeconds() int {
 	return int(api.NutExpiration / time.Second)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 )
 
 //
@@ -54,12 +55,81 @@ type CliResponse struct {
 	URL     string
 	Sin     string
 	Suk     string
-	Ask     string
+	Ask     *Ask
 	Can     string
 
 	// HoardCache is not serialized but the encoded response is saved here
 	// so we can check it in the next request
 	HoardCache *HoardCache
+}
+
+// Ask holds optional response to queries that
+// will be shown to the user from the SQRL client
+type Ask struct {
+	Message string `json:"message"`
+	Button1 string `json:"button1,omitempty"`
+	URL1    string `json:"url1,omitempty"`
+	Button2 string `json:"button2,omitempty"`
+	URL2    string `json:"url2,omitempty"`
+}
+
+// ParseAsk parses the special Ask format
+func ParseAsk(askString string) *Ask {
+	parts := strings.Split(askString, "~")
+	ask := &Ask{
+		Message: parts[0],
+	}
+	if len(parts) > 1 {
+		ask.Button1, ask.URL1 = splitButton(parts[1])
+	}
+	if len(parts) > 2 {
+		ask.Button2, ask.URL2 = splitButton(parts[2])
+	}
+	return ask
+}
+
+func splitButton(buttonString string) (string, string) {
+	semi := strings.Index(buttonString, ";")
+	if semi == -1 {
+		return buttonString, ""
+	}
+	button := buttonString[0:semi]
+	url := buttonString[semi+1:]
+	return button, url
+}
+
+// Encode creates the tilde and semicolon separated ask format
+func (a *Ask) Encode() string {
+	delimited := make([]string, 1)
+	delimited[0] = removeTilde(a.Message)
+	button := encodeButton(a.Button1, a.URL1)
+	if button != "" {
+		delimited = append(delimited, button)
+	}
+	button = encodeButton(a.Button2, a.URL2)
+	if button != "" {
+		delimited = append(delimited, button)
+	}
+	return strings.Join(delimited, "~")
+}
+
+func encodeButton(button, url string) string {
+	if button != "" {
+		urlappend := ""
+		if url != "" {
+			urlappend = fmt.Sprintf(";%v", strings.Replace(url, "~", "%7E", -1))
+		}
+		return fmt.Sprintf("%s%s", removeSemi(removeTilde(button)), urlappend)
+	}
+	return ""
+}
+
+func removeTilde(v string) string {
+	return strings.Replace(v, "~", "", -1)
+}
+
+func removeSemi(v string) string {
+	return strings.Replace(v, ";", "", -1)
 }
 
 // NewCliResponse creates a minimal valid CliResponse object
@@ -174,7 +244,9 @@ func (cr *CliResponse) Encode() []byte {
 		b.WriteString(fmt.Sprintf("suk=%v\r\n", cr.Suk))
 	}
 
-	// TODO Ask
+	if cr.Ask != nil {
+		b.WriteString(fmt.Sprintf("ask=%v\r\n", cr.Ask.Encode()))
+	}
 
 	if cr.Can != "" {
 		b.WriteString(fmt.Sprintf("can=%v\r\n", cr.Can))
@@ -210,7 +282,7 @@ func ParseCliResponse(body []byte) (*CliResponse, error) {
 		URL:     params["url"],
 		Sin:     params["sin"],
 		Suk:     params["suk"],
-		Ask:     params["ask"],
+		Ask:     ParseAsk(params["ask"]),
 		Can:     params["can"],
 	}, nil
 }

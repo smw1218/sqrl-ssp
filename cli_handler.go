@@ -30,6 +30,10 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	// defer writing the response and saving the new nut
 	defer api.writeResponse(req, response, w)
 
+	if req.Client.Cmd == "query" {
+		response.Ask = api.Authenticator.AskResponse(req.Identity())
+	}
+
 	// TODO remove me
 	spew.Dump(req)
 

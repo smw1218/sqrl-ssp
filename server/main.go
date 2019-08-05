@@ -41,7 +41,7 @@ func main() {
 	// hoard := redishoard.NewHoard(redisClient)
 	sspAPI := ssp.NewSqrlSspAPI(tree,
 		hoard,
-		&auther{hostOverride, rootPath},
+		&authy{hostOverride, rootPath},
 		authStore)
 	sspAPI.HostOverride = hostOverride
 	sspAPI.RootPath = rootPath
@@ -79,20 +79,24 @@ func main() {
 	}
 }
 
-type auther struct {
+type authy struct {
 	Host string
 	Path string
 }
 
-func (a *auther) AuthenticateIdentity(identity *ssp.SqrlIdentity) string {
+func (a *authy) AuthenticateIdentity(identity *ssp.SqrlIdentity) string {
 	return fmt.Sprintf("https://%v%v/success.html?idk=%v", a.Host, a.Path, identity.Idk)
 }
 
-func (a *auther) SwapIdentities(newIdentity, oldIdentity *ssp.SqrlIdentity) error {
+func (a *authy) SwapIdentities(newIdentity, oldIdentity *ssp.SqrlIdentity) error {
 	// nothing to do here since we're not creating users
 	return nil
 }
-func (a *auther) RemoveIdentity(identity *ssp.SqrlIdentity) error {
+func (a *authy) RemoveIdentity(identity *ssp.SqrlIdentity) error {
+	// nothing to do here since we're not creating users
+	return nil
+}
+func (a *authy) AskResponse(identity *ssp.SqrlIdentity) *ssp.Ask {
 	// nothing to do here since we're not creating users
 	return nil
 }
