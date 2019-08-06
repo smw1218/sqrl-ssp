@@ -75,7 +75,12 @@ type Ask struct {
 
 // ParseAsk parses the special Ask format
 func ParseAsk(askString string) *Ask {
-	parts := strings.Split(askString, "~")
+	encparts := strings.Split(askString, "~")
+	parts := make([]string, len(encparts))
+	for i, e := range encparts {
+		b, _ := Sqrl64.DecodeString(e)
+		parts[i] = string(b)
+	}
 	ask := &Ask{
 		Message: parts[0],
 	}
@@ -101,7 +106,7 @@ func splitButton(buttonString string) (string, string) {
 // Encode creates the tilde and semicolon separated ask format
 func (a *Ask) Encode() string {
 	delimited := make([]string, 1)
-	delimited[0] = removeTilde(a.Message)
+	delimited[0] = Sqrl64.EncodeToString([]byte(a.Message))
 	button := encodeButton(a.Button1, a.URL1)
 	if button != "" {
 		delimited = append(delimited, button)
@@ -117,9 +122,9 @@ func encodeButton(button, url string) string {
 	if button != "" {
 		urlappend := ""
 		if url != "" {
-			urlappend = fmt.Sprintf(";%v", strings.Replace(url, "~", "%7E", -1))
+			urlappend = fmt.Sprintf(";%v", url)
 		}
-		return fmt.Sprintf("%s%s", removeSemi(removeTilde(button)), urlappend)
+		return Sqrl64.EncodeToString([]byte(fmt.Sprintf("%s%s", removeSemi(button), urlappend)))
 	}
 	return ""
 }

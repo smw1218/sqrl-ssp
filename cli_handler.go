@@ -31,7 +31,9 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	defer api.writeResponse(req, response, w)
 
 	if req.Client.Cmd == "query" {
-		response.Ask = api.Authenticator.AskResponse(req.Identity())
+		tmpIdent := req.Identity()
+		tmpIdent.Btn = -1
+		response.Ask = api.Authenticator.AskResponse(tmpIdent)
 	}
 
 	// TODO remove me
@@ -152,7 +154,7 @@ func (api *SqrlSspAPI) finishCliResponse(req *CliRequest, response *CliResponse,
 	}
 	if req.IsAuthCommand() && !accountDisabled {
 		log.Printf("Authenticated Idk: %#v", identity)
-		authURL, err := api.authenticateIdentity(identity)
+		authURL, err := api.authenticateIdentity(identity, req.Client.Btn)
 		if err != nil {
 			log.Printf("Failed saving identity: %v", err)
 			response.WithTransientError().WithCommandFailed()
@@ -254,6 +256,8 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 
 func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, identity *SqrlIdentity) error {
 	response.WithIDMatch()
+	// copy the current Btn value from the request
+	identity.Btn = req.Client.Btn
 	changed := false
 	if req.IsAuthCommand() {
 		changed = req.UpdateIdentity(identity)

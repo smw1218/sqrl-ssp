@@ -85,7 +85,7 @@ type authy struct {
 }
 
 func (a *authy) AuthenticateIdentity(identity *ssp.SqrlIdentity) string {
-	return fmt.Sprintf("https://%v%v/success.html?idk=%v", a.Host, a.Path, identity.Idk)
+	return fmt.Sprintf("https://%v%v/success.html?idk=%v&btn=%v", a.Host, a.Path, identity.Idk, identity.Btn)
 }
 
 func (a *authy) SwapIdentities(newIdentity, oldIdentity *ssp.SqrlIdentity) error {
@@ -97,6 +97,10 @@ func (a *authy) RemoveIdentity(identity *ssp.SqrlIdentity) error {
 	return nil
 }
 func (a *authy) AskResponse(identity *ssp.SqrlIdentity) *ssp.Ask {
-	// nothing to do here since we're not creating users
-	return nil
+	// really annoying ask
+	return &ssp.Ask{
+		Message: "Do you really really want to login here?",
+		Button1: "Sure",
+		Button2: "Nope",
+	}
 }

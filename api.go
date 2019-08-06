@@ -66,6 +66,9 @@ type SqrlIdentity struct {
 	SQRLOnly bool   `json:"sqrlOnly"`
 	Hardlock bool   `json:"hardlock"`
 	Disabled bool   `json:"disabled"`
+	// Btn is filled in if the request includes a button press reponse from an
+	// ask. -1 if there's no value.
+	Btn int `json:"-" sql:"-"`
 }
 
 // Authenticator interface to allow user management triggered by
@@ -89,7 +92,9 @@ type Authenticator interface {
 	RemoveIdentity(identity *SqrlIdentity) error
 	// Send an ask response back to the SQRL client.
 	// Since this is triggered on query and not ident,
-	// the identity may only contain Idk
+	// the identity may only contain Idk. Ask responses
+	// will be included as part of the SqrlIdentity sent via
+	// AuthenticateIdentity
 	AskResponse(identity *SqrlIdentity) *Ask
 }
 
@@ -167,7 +172,7 @@ func (api *SqrlSspAPI) removeIdentity(identity *SqrlIdentity) error {
 	return api.authStore.DeleteIdentity(identity.Idk)
 }
 
-func (api *SqrlSspAPI) authenticateIdentity(identity *SqrlIdentity) (string, error) {
+func (api *SqrlSspAPI) authenticateIdentity(identity *SqrlIdentity, btn int) (string, error) {
 	redirect := api.Authenticator.AuthenticateIdentity(identity)
 	return redirect, api.authStore.SaveIdentity(identity)
 }

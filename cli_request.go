@@ -64,6 +64,8 @@ type ClientBody struct {
 	Vuk     string          `json:"vuk"`  // Sqrl64.Encoded
 	Pidk    string          `json:"pidk"` // Sqrl64.Encoded
 	Idk     string          `json:"idk"`  // Sqrl64.Encoded
+	// valid values are 0,1,2; -1 means no value
+	Btn int `json:"btn"`
 }
 
 // Encode returns the ClientBody encoded in Sqrl64
@@ -160,6 +162,11 @@ func ClientBodyFromParams(params map[string]string) (*ClientBody, error) {
 	cb.Pidk = params["pidk"]
 	cb.Idk = params["idk"]
 
+	cb.Btn, err = strconv.Atoi(params["btn"])
+	if err != nil {
+		cb.Btn = -1
+	}
+
 	return cb, nil
 }
 
@@ -182,6 +189,7 @@ func (cr *CliRequest) Identity() *SqrlIdentity {
 		Pidk:     cr.Client.Pidk,
 		SQRLOnly: cr.Client.Opt["sqrlonly"],
 		Hardlock: cr.Client.Opt["hardlock"],
+		Btn:      cr.Client.Btn,
 	}
 }
 
