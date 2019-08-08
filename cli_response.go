@@ -146,38 +146,17 @@ func NewCliResponse(nut Nut, qry string) *CliResponse {
 	}
 }
 
-// WithClientFailure set the appropriate TIF bits on this response.
-// Returns the object for easier chaining (not immutability).
-func (cr *CliResponse) WithClientFailure() *CliResponse {
-	cr.TIF |= TIFClientFailure
-	return cr
-}
-
-// WithCommandFailed set the appropriate TIF bits on this response.
-// Returns the object for easier chaining (not immutability).
-func (cr *CliResponse) WithCommandFailed() *CliResponse {
-	cr.TIF |= TIFCommandFailed
-	return cr
-}
-
-// WithSQRLDisabled set the appropriate TIF bits on this response.
-// Returns the object for easier chaining (not immutability).
-func (cr *CliResponse) WithSQRLDisabled() *CliResponse {
-	cr.TIF |= TIFSQRLDisabled
-	return cr
-}
-
-// WithTransientError set the appropriate TIF bits on this response.
-// Returns the object for easier chaining (not immutability).
-func (cr *CliResponse) WithTransientError() *CliResponse {
-	cr.TIF |= TIFTransientError
-	return cr
-}
-
 // WithIDMatch set the appropriate TIF bits on this response.
 // Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithIDMatch() *CliResponse {
 	cr.TIF |= TIFIDMatch
+	return cr
+}
+
+// ClearIDMatch set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) ClearIDMatch() *CliResponse {
+	cr.TIF = cr.TIF &^ TIFIDMatch
 	return cr
 }
 
@@ -202,10 +181,10 @@ func (cr *CliResponse) WithIPMatch() *CliResponse {
 	return cr
 }
 
-// WithBadIDAssociation set the appropriate TIF bits on this response.
+// WithSQRLDisabled set the appropriate TIF bits on this response.
 // Returns the object for easier chaining (not immutability).
-func (cr *CliResponse) WithBadIDAssociation() *CliResponse {
-	cr.TIF |= TIFBadIDAssociation
+func (cr *CliResponse) WithSQRLDisabled() *CliResponse {
+	cr.TIF |= TIFSQRLDisabled
 	return cr
 }
 
@@ -213,6 +192,34 @@ func (cr *CliResponse) WithBadIDAssociation() *CliResponse {
 // Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithFunctionNotSupported() *CliResponse {
 	cr.TIF |= TIFFunctionNotSupported
+	return cr
+}
+
+// WithTransientError set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) WithTransientError() *CliResponse {
+	cr.TIF |= TIFTransientError
+	return cr
+}
+
+// WithClientFailure set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) WithClientFailure() *CliResponse {
+	cr.TIF |= TIFClientFailure
+	return cr
+}
+
+// WithCommandFailed set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) WithCommandFailed() *CliResponse {
+	cr.TIF |= TIFCommandFailed
+	return cr
+}
+
+// WithBadIDAssociation set the appropriate TIF bits on this response.
+// Returns the object for easier chaining (not immutability).
+func (cr *CliResponse) WithBadIDAssociation() *CliResponse {
+	cr.TIF |= TIFBadIDAssociation
 	return cr
 }
 

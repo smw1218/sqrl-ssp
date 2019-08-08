@@ -66,7 +66,7 @@ type SqrlIdentity struct {
 	SQRLOnly bool   `json:"sqrlOnly"`
 	Hardlock bool   `json:"hardlock"`
 	Disabled bool   `json:"disabled"`
-	// Btn is filled in if the request includes a button press reponse from an
+	// Btn is filled in if the request includes a button press response from an
 	// ask. -1 if there's no value.
 	Btn int `json:"-" sql:"-"`
 }

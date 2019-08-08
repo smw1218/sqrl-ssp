@@ -8,6 +8,14 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+var supportedCommands = map[string]bool{
+	"query":   true,
+	"ident":   true,
+	"enable":  true,
+	"disable": true,
+	"remove":  true,
+}
+
 // Cli implements the /cli.sqrl endpoint
 func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Req: %v", r.URL)
@@ -30,12 +38,6 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	// defer writing the response and saving the new nut
 	defer api.writeResponse(req, response, w)
 
-	if req.Client.Cmd == "query" {
-		tmpIdent := req.Identity()
-		tmpIdent.Btn = -1
-		response.Ask = api.Authenticator.AskResponse(tmpIdent)
-	}
-
 	// TODO remove me
 	spew.Dump(req)
 
@@ -56,6 +58,12 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	err = api.requestValidations(hoardCache, req, r, response)
 	if err != nil {
 		return
+	}
+
+	if req.Client.Cmd == "query" {
+		tmpIdent := req.Identity()
+		tmpIdent.Btn = -1
+		response.Ask = api.Authenticator.AskResponse(tmpIdent)
 	}
 
 	// generate new nut
@@ -99,8 +107,8 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO do we id match on first auth? grc says nope
-		// response.WithIDMatch()
+		// Do we id match on first auth? grc says nope; PaulF and I think yes
+		response.WithIDMatch()
 	}
 	api.setSuk(req, response, identity)
 
@@ -251,6 +259,11 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 		return fmt.Errorf("validation error")
 	}
 
+	if !supportedCommands[req.Client.Cmd] {
+		response.WithFunctionNotSupported()
+		return fmt.Errorf("Uknown command: %v", req.Client.Cmd)
+	}
+
 	return nil
 }
 
@@ -283,6 +296,7 @@ func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, ide
 				response.WithClientFailure().WithCommandFailed()
 				return fmt.Errorf("identity error")
 			}
+			response.ClearIDMatch()
 			log.Printf("removed identity %v", identity.Idk)
 		}
 	}
