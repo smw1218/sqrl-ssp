@@ -117,7 +117,7 @@ func (api *SqrlSspAPI) PNG(w http.ResponseWriter, r *http.Request) {
 
 	value := sqrlURL.String()
 
-	png, err := qrcode.Encode(value, qrcode.Medium, -5)
+	png, err := qrcode.Encode(value, qrcode.Low, -5)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed create of PNG"))
