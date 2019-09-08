@@ -227,6 +227,8 @@ func (api *SqrlSspAPI) checkPreviousIdentity(req *CliRequest, response *CliRespo
 	}
 	if previousIdentity != nil {
 		response.WithPreviousIDMatch()
+		// as per spec, proactively return the suk on pidk match
+		req.Client.Opt["suk"] = true
 	}
 	return previousIdentity, nil
 }
@@ -279,6 +281,7 @@ func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, ide
 		err := req.VerifyUrs(identity.Vuk)
 		if err != nil {
 			log.Printf("enable command failed urs validation")
+			// TODO: remove since sig check failed here?
 			if identity.Disabled {
 				response.WithSQRLDisabled()
 			}
@@ -306,6 +309,7 @@ func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, ide
 	}
 
 	if identity.Disabled {
+		req.Client.Opt["suk"] = true
 		response.WithSQRLDisabled()
 	}
 	if changed {
