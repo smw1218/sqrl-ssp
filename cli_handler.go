@@ -70,7 +70,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	nut, err = api.tree.Nut()
 	if err != nil {
 		log.Printf("Error generating nut: %v", err)
-		response.WithTransientError()
+		response.WithCommandFailed()
 		return
 	}
 
@@ -83,7 +83,7 @@ func (api *SqrlSspAPI) Cli(w http.ResponseWriter, r *http.Request) {
 	identity, err := api.authStore.FindIdentity(req.Client.Idk)
 	if err != nil && err != ErrNotFound {
 		log.Printf("Error looking up identity: %v", err)
-		response.WithTransientError()
+		response.WithCommandFailed()
 		return
 	}
 
@@ -135,7 +135,7 @@ func (api *SqrlSspAPI) writeResponse(req *CliRequest, response *CliResponse, w h
 		}, api.NutExpiration)
 		if err != nil {
 			log.Printf("Failed saving to hoard: %v", err)
-			response.WithTransientError()
+			response.WithCommandFailed()
 			respBytes = response.Encode()
 		} else {
 			log.Printf("Saved nut %v in hoard", response.Nut)
@@ -165,7 +165,7 @@ func (api *SqrlSspAPI) finishCliResponse(req *CliRequest, response *CliResponse,
 		authURL, err := api.authenticateIdentity(identity, req.Client.Btn)
 		if err != nil {
 			log.Printf("Failed saving identity: %v", err)
-			response.WithTransientError().WithCommandFailed()
+			response.WithCommandFailed()
 			return
 		}
 		if req.Client.Opt["cps"] {
@@ -192,7 +192,7 @@ func (api *SqrlSspAPI) finishCliResponse(req *CliRequest, response *CliResponse,
 			}, api.NutExpiration)
 			if err != nil {
 				log.Printf("Failed saving to hoard: %v", err)
-				response.WithTransientError()
+				response.WithCommandFailed()
 			}
 			log.Printf("Saved pagnut %v in hoard", hoardCache.PagNut)
 		}
@@ -204,7 +204,7 @@ func (api *SqrlSspAPI) checkPreviousSwap(previousIdentity, identity *SqrlIdentit
 		err := api.swapIdentities(previousIdentity, identity)
 		if err != nil {
 			log.Printf("Failed swapping identities: %v", err)
-			response.WithTransientError().WithCommandFailed()
+			response.WithCommandFailed()
 			return fmt.Errorf("identity swap error")
 		}
 		log.Printf("Swapped identity %#v for %#v", previousIdentity, identity)
@@ -221,7 +221,7 @@ func (api *SqrlSspAPI) checkPreviousIdentity(req *CliRequest, response *CliRespo
 		previousIdentity, err = api.authStore.FindIdentity(req.Client.Pidk)
 		if err != nil && err != ErrNotFound {
 			log.Printf("Error looking up previous identity: %v", err)
-			response.WithTransientError()
+			response.WithCommandFailed()
 			return nil, err
 		}
 	}
