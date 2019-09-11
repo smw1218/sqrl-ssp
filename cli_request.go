@@ -178,6 +178,8 @@ type CliRequest struct {
 	Ids           string      `json:"ids"`
 	Pids          string      `json:"pids"`
 	Urs           string      `json:"urs"`
+
+	IPAddress string // saved here for reference
 }
 
 // Identity creates an identity from a request

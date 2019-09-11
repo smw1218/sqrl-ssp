@@ -234,6 +234,7 @@ func (api *SqrlSspAPI) checkPreviousIdentity(req *CliRequest, response *CliRespo
 }
 
 func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliRequest, r *http.Request, response *CliResponse) error {
+	req.IPAddress = api.RemoteIP(r)
 	// validate last response against this request
 	if hoardCache.LastResponse != nil && !req.ValidateLastResponse(hoardCache.LastResponse) {
 		response.WithCommandFailed()
@@ -243,7 +244,7 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 	}
 
 	// validate the IP if required
-	if hoardCache.RemoteIP != api.RemoteIP(r) {
+	if hoardCache.RemoteIP != req.IPAddress {
 		if !req.Client.Opt["noiptest"] {
 			log.Printf("Rejecting on IP mis-match orig: %v current: %v", hoardCache.RemoteIP, api.RemoteIP(r))
 			response.WithCommandFailed()
@@ -270,7 +271,13 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 }
 
 func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, identity *SqrlIdentity) error {
-	response.WithIDMatch()
+	if identity.Rekeyed != "" {
+		response.WithPreviousIDMatch().WithCommandFailed()
+		log.Printf("Attempt to use Rekeyed IDK: %v from %v", identity.Idk, req.IPAddress)
+		return fmt.Errorf("attempted use of rekeyed identity")
+	} else {
+		response.WithIDMatch()
+	}
 	// copy the current Btn value from the request
 	identity.Btn = req.Client.Btn
 	changed := false

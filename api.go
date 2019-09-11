@@ -66,6 +66,7 @@ type SqrlIdentity struct {
 	SQRLOnly bool   `json:"sqrlOnly"`
 	Hardlock bool   `json:"hardlock"`
 	Disabled bool   `json:"disabled"`
+	Rekeyed  string `json:"rekeyed"` // If this Idk has been rekeyed, this links to the new ID
 	// Btn is filled in if the request includes a button press response from an
 	// ask. -1 if there's no value.
 	Btn int `json:"-" sql:"-"`
@@ -161,7 +162,8 @@ func (api *SqrlSspAPI) swapIdentities(previousIdentity, newIdentity *SqrlIdentit
 	if err != nil {
 		return err
 	}
-	return api.authStore.DeleteIdentity(previousIdentity.Idk)
+	previousIdentity.Rekeyed = newIdentity.Idk
+	return api.authStore.SaveIdentity(previousIdentity)
 }
 
 func (api *SqrlSspAPI) removeIdentity(identity *SqrlIdentity) error {
