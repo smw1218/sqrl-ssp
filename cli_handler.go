@@ -272,8 +272,11 @@ func (api *SqrlSspAPI) requestValidations(hoardCache *HoardCache, req *CliReques
 
 func (api *SqrlSspAPI) knownIdentity(req *CliRequest, response *CliResponse, identity *SqrlIdentity) error {
 	if identity.Rekeyed != "" {
-		response.WithPreviousIDMatch().WithCommandFailed()
+		response.WithIdentitySuperseded()
 		log.Printf("Attempt to use Rekeyed IDK: %v from %v", identity.Idk, req.IPAddress)
+		if req.Client.Cmd != "query" {
+			response.WithCommandFailed()
+		}
 		return fmt.Errorf("attempted use of rekeyed identity")
 	} else {
 		response.WithIDMatch()

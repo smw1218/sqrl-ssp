@@ -30,6 +30,8 @@ const (
 	TIFClientFailure = 0x80
 	// The owner of the Nut doesn't match this request
 	TIFBadIDAssociation = 0x100
+	// The IDK has been rekeyed to a newer one
+	TIFIdentitySuperseded = 0x200
 )
 
 // TIFDesc description of the TIF bits
@@ -43,6 +45,7 @@ var TIFDesc = map[uint32]string{
 	TIFCommandFailed:        "Command failed",
 	TIFClientFailure:        "Bad client request",
 	TIFBadIDAssociation:     "Mismatch of nut to idk",
+	TIFIdentitySuperseded:   "Identity superseded by newer one",
 }
 
 // CliResponse encodes a response to the SQRL client
@@ -220,6 +223,11 @@ func (cr *CliResponse) WithCommandFailed() *CliResponse {
 // Returns the object for easier chaining (not immutability).
 func (cr *CliResponse) WithBadIDAssociation() *CliResponse {
 	cr.TIF |= TIFBadIDAssociation
+	return cr
+}
+
+func (cr *CliResponse) WithIdentitySuperseded() *CliResponse {
+	cr.TIF |= TIFIdentitySuperseded
 	return cr
 }
 
